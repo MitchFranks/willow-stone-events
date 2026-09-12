@@ -833,7 +833,7 @@ button:disabled {
 .erow {
   width: 100%;
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr) auto 18px;
+  grid-template-columns: 168px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 16px;
   padding: 14px 10px;
@@ -862,9 +862,8 @@ button:disabled {
   box-shadow: inset 0 0 0 1px var(--brand-line);
 }
 
-.erow--button:hover .erow__chev {
-  color: var(--brand);
-  transform: translateX(2px);
+.erow--button:hover .erow__ctaBtn {
+  background: var(--brand-deep);
 }
 
 .erow--button:active {
@@ -1965,6 +1964,772 @@ button:disabled {
 }
 
 /* ==========================================================================
+   REVISION — artwork, hero, progressive disclosure
+   --------------------------------------------------------------------------
+   Everything below was added in the revision pass. The goals were to cut how
+   much is on screen at once, raise the one thing that matters, and make the
+   controls announce themselves.
+   ========================================================================== */
+
+.art {
+  display: block;
+}
+
+/* Fills the event header behind the title. */
+.art--banner {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.art--vignette {
+  width: 330px;
+  height: 104px;
+  flex: none;
+  align-self: flex-end;
+  margin: 0 -10px -19px 0;
+}
+
+/* --- dashboard hero ---------------------------------------------------- */
+
+.hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 22px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.hero__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero__eyebrow {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.hero__title {
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+}
+
+.hero__sub {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.hero__aside {
+  flex: none;
+  align-self: flex-start;
+  padding-top: 4px;
+}
+
+/* --- attention, promoted ----------------------------------------------- */
+
+.attention__title {
+  font-size: 17px;
+}
+
+.attention--hero {
+  padding: 22px 22px 10px;
+  box-shadow: 0 12px 28px -14px rgba(176, 64, 44, 0.3);
+}
+
+.attention--hero .attention__title {
+  font-size: 20px;
+}
+
+.attention--hero .attention__sub {
+  font-size: 13px;
+}
+
+.attention--event .attention__title {
+  font-size: 18px;
+}
+
+/* --- at-a-glance rail (was four large stat tiles) ---------------------- */
+
+.glance {
+  display: flex;
+  flex-direction: column;
+  padding-top: 4px;
+}
+
+.glance__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.glance__row:first-child {
+  border-top: none;
+}
+
+.glance__label {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.glance__value {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.glance__note {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--faint);
+}
+
+.glance__row--attention .glance__label {
+  color: var(--urgent);
+  font-weight: 500;
+}
+
+.glance__row--attention .glance__value {
+  color: var(--urgent);
+}
+
+/* --- collapsible card -------------------------------------------------- */
+
+.collapsible__head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  background: var(--surface-2);
+  text-align: left;
+  border-bottom: 1px solid transparent;
+  transition: background 0.12s ease;
+}
+
+.collapsible__head:hover {
+  background: #f4f1ec;
+}
+
+.collapsible.is-open .collapsible__head {
+  border-bottom-color: var(--line-soft);
+}
+
+.collapsible__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.collapsible__title .icon {
+  color: var(--muted);
+}
+
+.collapsible__badge {
+  font-size: 11.5px;
+  color: var(--faint);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 2px 9px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+/* The chevron rotates, so open/closed reads without the label. */
+.collapsible__chev {
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+
+.collapsible.is-open .collapsible__chev {
+  transform: rotate(90deg);
+}
+
+/* --- tabs -------------------------------------------------------------- */
+
+.tabwrap {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px 8px 0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 13px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.tab .icon {
+  opacity: 0.7;
+}
+
+.tab:hover:not(.is-active) {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* Active state is signified three ways at once: weight, colour, underline. */
+.tab.is-active {
+  color: var(--brand-deep);
+  background: var(--surface);
+  border-bottom-color: var(--brand);
+  font-weight: 600;
+}
+
+.tab__count {
+  min-width: 19px;
+  text-align: center;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--line-soft);
+  color: var(--muted);
+}
+
+.tab.is-active .tab__count {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+
+.tab__count--urgent,
+.tab.is-active .tab__count--urgent {
+  background: var(--urgent-soft);
+  color: var(--urgent);
+}
+
+.tab__count--ok,
+.tab.is-active .tab__count--ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.tabbody {
+  padding: 2px 18px 18px;
+}
+
+.tabpanel {
+  animation: panelIn 0.16s ease-out;
+}
+
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.panelhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 0 8px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 2px;
+}
+
+.panelhead__title {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.panelhead__meta {
+  font-size: 11.5px;
+  color: var(--faint);
+  text-align: right;
+}
+
+/* --- event header banner ----------------------------------------------- */
+
+.eventhead {
+  position: relative;
+  min-height: 196px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.eventhead__overlay {
+  position: relative;
+  padding: 22px 24px;
+  max-width: 62%;
+}
+
+.eventhead__title {
+  font-size: 29px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  margin-top: 8px;
+}
+
+.eventhead__sub {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  margin-top: 4px;
+}
+
+.eventhead__pill {
+  margin-top: 13px;
+}
+
+/* --- event row call to action ------------------------------------------ */
+
+.erow__cta {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 158px;
+}
+
+/* It is a span styled as a button — the whole row is the real control. */
+.erow__ctaBtn {
+  pointer-events: none;
+}
+
+.erow__ctaEmpty {
+  display: block;
+}
+
+/* ==========================================================================
+   REVISION PASS 2 — welcome first, then disclose
+   --------------------------------------------------------------------------
+   A photographic welcome band replaces the dense stat header, and the two long
+   lists became single lines that open on click. The page should greet you, not
+   brief you.
+
+   Photography: Pixabay Content License (free for commercial use, attribution
+   not required). Files live in src/assets/ rather than being hot-linked, so
+   the prototype cannot break if the source host changes.
+   ========================================================================== */
+
+:root {
+  --r-lg: 16px;
+  --ink-dark: 18, 30, 26;
+}
+
+/* --- photographic hero (dashboard) ------------------------------------- */
+
+.phero {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 304px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.phero__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Angled scrim: dense where the words are, clear where the picture is. */
+.phero__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    rgba(var(--ink-dark), 0.93) 0%,
+    rgba(var(--ink-dark), 0.82) 36%,
+    rgba(var(--ink-dark), 0.42) 68%,
+    rgba(var(--ink-dark), 0.2) 100%
+  );
+}
+
+.phero__content {
+  position: relative;
+  padding: 36px 38px;
+  max-width: 660px;
+  color: #fff;
+}
+
+.phero__eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.phero__title {
+  margin-top: 10px;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: #fff;
+}
+
+.phero__lead {
+  margin-top: 10px;
+  max-width: 46ch;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.phero__lead strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.phero__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+
+.btn--onDark {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--brand-deep);
+  font-weight: 600;
+}
+
+.btn--onDark:hover:not(:disabled) {
+  background: #fff;
+}
+
+.pill--onDark {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: #fff;
+}
+
+.pill--onDark .icon {
+  fill: currentColor;
+}
+
+/* --- disclosure rows ---------------------------------------------------- */
+
+.drow {
+  border-top: 1px solid var(--line-soft);
+}
+
+.drow:first-child {
+  border-top: none;
+}
+
+.drow__summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 8px;
+  text-align: left;
+  border-radius: var(--r-sm);
+  transition: background 0.12s ease;
+}
+
+.drow__summary:hover {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.drow__chev {
+  margin-left: auto;
+  flex: none;
+  color: var(--faint);
+  transition: transform 0.18s ease, color 0.12s ease;
+}
+
+.drow.is-open .drow__chev {
+  transform: rotate(90deg);
+  color: var(--ink-2);
+}
+
+.drow__detail {
+  padding: 2px 8px 18px 48px;
+  animation: panelIn 0.16s ease-out;
+}
+
+/* attention items, as disclosure rows */
+
+.aitem__flag {
+  width: 3px;
+  height: 28px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.aitem--urgent .aitem__flag {
+  background: var(--urgent);
+}
+
+.aitem--warning .aitem__flag {
+  background: var(--warn);
+}
+
+.aitem--resolved .aitem__flag {
+  background: var(--ok-line);
+}
+
+.aitem__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.aitem--resolved .aitem__title {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.aitem__event {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  padding: 2px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.aitem__detail {
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+
+.aitem__meta {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+.aitem__actions {
+  margin-top: 13px;
+}
+
+/* --- event rows, expandable -------------------------------------------- */
+
+.erow2 {
+  border-top: 1px solid var(--line-soft);
+}
+
+.erow2:first-child {
+  border-top: none;
+}
+
+.erow2__line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+}
+
+.erow2__expand {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 8px;
+  text-align: left;
+  border-radius: var(--r-sm);
+  transition: background 0.12s ease;
+}
+
+.erow2__expand:hover {
+  background: var(--surface-2);
+}
+
+.erow2__chev {
+  flex: none;
+  color: var(--faint);
+  transition: transform 0.18s ease;
+}
+
+.erow2.is-open .erow2__chev {
+  transform: rotate(90deg);
+  color: var(--ink-2);
+}
+
+.erow2__date {
+  flex: none;
+  width: 170px;
+  display: flex;
+  flex-direction: column;
+}
+
+.erow2__dateMain {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.erow2__dateSub {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+.erow2__name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.erow2__clients {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.erow2__cta {
+  flex: none;
+}
+
+.erow2__detail {
+  padding: 0 8px 16px 37px;
+  animation: panelIn 0.16s ease-out;
+}
+
+.erow2__note {
+  margin-top: 9px;
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+.minifacts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+}
+
+.minifacts dt {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.minifacts dd {
+  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* --- event header, now photographic ------------------------------------ */
+
+.eventhead {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 262px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.eventhead__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.eventhead__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    rgba(var(--ink-dark), 0.92) 0%,
+    rgba(var(--ink-dark), 0.78) 40%,
+    rgba(var(--ink-dark), 0.34) 74%,
+    rgba(var(--ink-dark), 0.14) 100%
+  );
+}
+
+.eventhead__overlay {
+  position: relative;
+  padding: 28px 30px;
+  max-width: 62%;
+  color: #fff;
+}
+
+.eventhead__title {
+  margin-top: 10px;
+  font-size: 32px;
+  color: #fff;
+}
+
+.eventhead__sub {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.backlink--onDark {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.backlink--onDark:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+/* ==========================================================================
    Responsive
    ========================================================================== */
 
@@ -1993,6 +2758,10 @@ button:disabled {
 
   .attcards {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .eventhead__overlay {
+    max-width: 80%;
   }
 }
 
@@ -2045,8 +2814,168 @@ button:disabled {
     grid-column: 1 / -1;
   }
 
-  .erow__chev {
+  .erow__cta {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    min-width: 0;
+  }
+
+  .erow__ctaBtn {
+    width: 100%;
+  }
+
+  .hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .art--vignette {
     display: none;
+  }
+
+  .eventhead {
+    min-height: auto;
+  }
+
+  .eventhead__overlay {
+    max-width: 100%;
+    padding: 18px;
+  }
+
+  .eventhead__title {
+    font-size: 24px;
+  }
+
+  /* On narrow screens the angled scrim gets cropped, so both photographic
+     headers switch to a straight vertical scrim to keep text readable. */
+  .phero__scrim,
+  .eventhead__scrim {
+    background: linear-gradient(180deg, rgba(var(--ink-dark), 0.55) 0%, rgba(var(--ink-dark), 0.92) 68%);
+  }
+
+  .phero {
+    min-height: 268px;
+  }
+
+  .phero__content {
+    padding: 24px 20px;
+  }
+
+  .phero__title {
+    font-size: 27px;
+  }
+
+  .phero__lead {
+    font-size: 14.5px;
+  }
+
+  .eventhead {
+    min-height: 226px;
+  }
+
+  .minifacts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Narrow screens: the summary rows become a small grid instead of one flex
+     line, so the title gets the full width rather than being crushed into a
+     column two words wide. */
+  .erow2__line {
+    flex-wrap: wrap;
+  }
+
+  .erow2__expand {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 3px 10px;
+    align-items: center;
+  }
+
+  .erow2__chev {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .erow2__name {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .erow2__date {
+    grid-column: 2;
+    grid-row: 2;
+    width: auto;
+    flex-direction: row;
+    gap: 6px;
+  }
+
+  .erow2__expand .pill {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .erow2__cta {
+    width: 100%;
+    margin: 0 8px 10px;
+  }
+
+  .drow__summary {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .aitem__flag {
+    height: 20px;
+    order: 0;
+  }
+
+  .drow__summary .pill {
+    order: 1;
+  }
+
+  .drow__chev {
+    order: 2;
+  }
+
+  .aitem__title {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  .aitem__event {
+    order: 4;
+  }
+
+  .drow__detail {
+    padding-left: 8px;
+  }
+
+  .erow2__detail {
+    padding-left: 8px;
+  }
+
+  .attention--hero {
+    padding: 18px 16px 8px;
+  }
+
+  .tabbody {
+    padding: 2px 14px 16px;
+  }
+
+  .tab {
+    padding: 9px 11px;
+    font-size: 12.5px;
+  }
+
+  .panelhead {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .panelhead__meta {
+    text-align: left;
   }
 
   .arow {

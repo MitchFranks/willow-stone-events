@@ -24,6 +24,12 @@ export function AppShell({ crumbs = [], onNavigate, children }) {
             </span>
           </button>
 
+          {/* REVISION — SIGNIFIER / NO FALSE AFFORDANCE:
+              v1 showed Dashboard, Events, Calendar and Inbox with the last
+              three greyed out. Testing the prototype, the first instinct when
+              trying to reach an event was to click "Events" — which did
+              nothing. Nav items that look like navigation but aren't cost the
+              user time, so the two unbuilt ones are gone and Events now works. */}
           <nav className="topnav" aria-label="Primary">
             <button
               className={`topnav__item ${crumbs.length === 0 ? 'is-active' : ''}`}
@@ -31,14 +37,11 @@ export function AppShell({ crumbs = [], onNavigate, children }) {
             >
               Dashboard
             </button>
-            <button className={`topnav__item ${crumbs.length > 0 ? 'is-active' : ''}`} disabled>
+            <button
+              className={`topnav__item ${crumbs.length > 0 ? 'is-active' : ''}`}
+              onClick={() => onNavigate('event')}
+            >
               Events
-            </button>
-            <button className="topnav__item" disabled>
-              Calendar
-            </button>
-            <button className="topnav__item" disabled>
-              Inbox
             </button>
           </nav>
 

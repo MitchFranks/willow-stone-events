@@ -1,69 +1,70 @@
 // ---------------------------------------------------------------------------
 // SCREEN 1 — Venue dashboard.
 // Job: in a few seconds, say what is happening at the venue and what needs the
-// manager's attention.
+// manager's attention — without making that feel like being shouted at.
 //
-// Reading order is deliberate, strongest signal first:
-//   1. Needs Attention   (the answer to "what do I do next?")
-//   2. Upcoming events   (the answer to "what is happening?")
-//   3. Today / activity  (supporting context, quietest)
+// REVISION NOTE (second pass — welcome, then disclose):
+// The page used to open with five fully-written attention items and five dense
+// event rows. Everything was legible but it arrived all at once, which reads as
+// pressure rather than control.
+//
+// Now the page opens on a photographic welcome band that states the one number
+// that matters, and both lists below it are single lines that open on click.
+// The closed state still carries enough to triage — status, title, which event
+// — so opening a row is for acting, not for finding out what it is.
 // ---------------------------------------------------------------------------
 
-import { Card, Icon, Pill } from './ui.jsx'
+import { useRef, useState } from 'react'
+import { Card, Collapsible, DisclosureRow, Icon, Pill } from './ui.jsx'
+import heroImage from '../assets/hero-reception.jpg'
 import { events, recentActivity, todaySchedule, venue, venueStats } from '../data.js'
 
 export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessage }) {
+  const attentionRef = useRef(null)
   const open = attention.filter((item) => !item.resolved)
   const resolved = attention.filter((item) => item.resolved)
   const eventsWithAttention = new Set(open.map((item) => item.eventId)).size
 
   return (
     <div className="stack-lg">
-      <div className="pagehead">
-        <div>
-          <p className="pagehead__eyebrow">{venue.today}</p>
-          <h1 className="pagehead__title">Good morning, {venue.manager.split(' ')[0]}</h1>
-          <p className="pagehead__sub">
-            One event on site today and {open.length} {open.length === 1 ? 'item' : 'items'} waiting on you
+      {/* ------------------------- WELCOME BAND -------------------------- */}
+      <section className="phero">
+        <img className="phero__img" src={heroImage} alt="" />
+        <div className="phero__scrim" aria-hidden="true" />
+        <div className="phero__content">
+          <p className="phero__eyebrow">{venue.today}</p>
+          <h1 className="phero__title">Good morning, {venue.manager.split(' ')[0]}</h1>
+          <p className="phero__lead">
+            One event is on site today, and{' '}
+            <strong>
+              {open.length} {open.length === 1 ? 'item needs' : 'items need'} your attention
+            </strong>{' '}
             across {eventsWithAttention} {eventsWithAttention === 1 ? 'event' : 'events'}.
           </p>
+          <div className="phero__actions">
+            <button
+              className="btn btn--onDark"
+              onClick={() => attentionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              See what needs attention
+              <Icon name="arrowRight" size={15} />
+            </button>
+            <Pill tone="onDark" icon="circle">
+              Alvarez &amp; Reed on site
+            </Pill>
+          </div>
         </div>
-        <div className="pagehead__aside">
-          <Pill tone="live" icon="circle">
-            Alvarez &amp; Reed on site
-          </Pill>
-        </div>
-      </div>
+      </section>
 
-      {/* SIMILARITY: four stats share one shape; only the attention stat is
-          tinted, so the eye lands on the number that implies work. */}
-      <div className="statrow">
-        {venueStats.map((stat) => (
-          <Stat
-            key={stat.label}
-            label={stat.label}
-            tone={stat.tone}
-            // The attention tile is derived from live state so it can never
-            // disagree with the list directly beneath it.
-            value={stat.tone === 'attention' ? String(open.length) : stat.value}
-            note={stat.tone === 'attention' ? `across ${eventsWithAttention} events` : stat.note}
-          />
-        ))}
-      </div>
-
-      {/* ---------------------------------------------------------------
-          NEEDS ATTENTION — the whole point of the screen.
-          Given its own tinted common region, placed above everything else,
-          and the only place on the page that uses the attention colours.
-         --------------------------------------------------------------- */}
-      <section className="attention">
+      {/* ---------------------- NEEDS ATTENTION -------------------------- */}
+      <section className="attention attention--hero" ref={attentionRef}>
         <header className="attention__head">
           <div className="attention__headText">
             <h2 className="attention__title">
-              <Icon name="alert" size={18} />
+              <Icon name="alert" size={20} />
               Needs attention
             </h2>
-            <p className="attention__sub">Sorted by what is due first. Everything else is on track.</p>
+            <p className="attention__sub">Sorted by what is due first. Open a row to act on it.</p>
           </div>
           <span className="attention__count">
             {open.length} open
@@ -72,8 +73,14 @@ export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessag
         </header>
 
         <ul className="attention__list">
-          {open.map((item) => (
-            <AttentionRow key={item.id} item={item} onOpenEvent={onOpenEvent} onOpenMessage={onOpenMessage} />
+          {open.map((item, i) => (
+            <AttentionRow
+              key={item.id}
+              item={item}
+              defaultOpen={i === 0}
+              onOpenEvent={onOpenEvent}
+              onOpenMessage={onOpenMessage}
+            />
           ))}
           {resolved.map((item) => (
             <AttentionRow key={item.id} item={item} resolved onOpenEvent={onOpenEvent} onOpenMessage={onOpenMessage} />
@@ -83,12 +90,7 @@ export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessag
 
       <div className="split">
         <div className="stack">
-          <Card
-            title="Upcoming events"
-            icon="calendar"
-            subtitle="Next five bookings"
-            action={<span className="card__hint">Johnson Wedding opens a full workspace</span>}
-          >
+          <Card title="Upcoming events" icon="calendar" subtitle="Next five bookings · open a row for detail">
             <ul className="eventlist">
               {events.map((event) => (
                 <EventRow
@@ -103,7 +105,26 @@ export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessag
         </div>
 
         <div className="stack">
-          <Card title="Today's schedule" icon="clock" subtitle="Saturday, September 12">
+          <Card title="At a glance" icon="circle" subtitle="This month">
+            <ul className="glance">
+              {venueStats.map((stat) => {
+                const isAttention = stat.tone === 'attention'
+                return (
+                  <li className={`glance__row ${isAttention ? 'glance__row--attention' : ''}`} key={stat.label}>
+                    <span className="glance__label">{stat.label}</span>
+                    <span className="glance__value">
+                      {isAttention ? open.length : stat.value}
+                      <span className="glance__note">
+                        {isAttention ? `across ${eventsWithAttention} events` : stat.note}
+                      </span>
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </Card>
+
+          <Collapsible title="Today's schedule" icon="clock" badge={`${todaySchedule.length} items`} defaultOpen>
             <ol className="daylist">
               {todaySchedule.map((slot) => (
                 <li key={slot.time} className={`daylist__item daylist__item--${slot.state}`}>
@@ -117,9 +138,9 @@ export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessag
                 </li>
               ))}
             </ol>
-          </Card>
+          </Collapsible>
 
-          <Card title="Recent activity" icon="clock" subtitle="Across all events">
+          <Collapsible title="Recent activity" icon="clock" badge={`${recentActivity.length} updates`}>
             <ul className="activity">
               {recentActivity.map((entry, i) => (
                 <li className="activity__item" key={i}>
@@ -135,124 +156,126 @@ export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessag
                 </li>
               ))}
             </ul>
-          </Card>
+          </Collapsible>
         </div>
       </div>
     </div>
   )
 }
 
-function Stat({ label, value, note, tone }) {
-  return (
-    <div className={`stat ${tone ? `stat--${tone}` : ''}`}>
-      <span className="stat__label">{label}</span>
-      <span className="stat__value">{value}</span>
-      <span className="stat__note">{note}</span>
-    </div>
-  )
-}
-
-function AttentionRow({ item, resolved, onOpenEvent, onOpenMessage }) {
+function AttentionRow({ item, resolved, defaultOpen, onOpenEvent, onOpenMessage }) {
   const isJohnson = item.eventId === 'johnson'
   const openTarget = item.id === 'decor-time' ? onOpenMessage : () => onOpenEvent('johnson')
 
+  const summary = (
+    <>
+      <span className="aitem__flag" aria-hidden="true" />
+      {resolved ? (
+        <Pill tone="ok" icon="check">
+          Resolved
+        </Pill>
+      ) : (
+        <Pill tone={item.tone === 'urgent' ? 'urgent' : 'warning'}>{item.priority}</Pill>
+      )}
+      <span className="aitem__title">{item.title}</span>
+      <span className="aitem__event">{item.event}</span>
+    </>
+  )
+
   return (
-    <li className={`arow ${resolved ? 'arow--resolved' : `arow--${item.tone}`}`}>
-      <span className="arow__flag" aria-hidden="true" />
-
-      <span className="arow__main">
-        <span className="arow__topline">
-          {resolved ? (
-            <Pill tone="ok" icon="check">
-              Resolved
-            </Pill>
-          ) : (
-            <Pill tone={item.tone === 'urgent' ? 'urgent' : 'warning'}>{item.priority}</Pill>
-          )}
-          <button className="arow__event" onClick={() => isJohnson && onOpenEvent('johnson')} disabled={!isJohnson}>
-            {item.event}
-          </button>
-        </span>
-        <span className="arow__title">{item.title}</span>
-        <span className="arow__detail">{resolved ? 'Reply sent to Emily Johnson. Timeline updated.' : item.detail}</span>
-      </span>
-
-      <span className="arow__action">
+    <DisclosureRow
+      className={resolved ? 'aitem aitem--resolved' : `aitem aitem--${item.tone}`}
+      summary={summary}
+      defaultOpen={defaultOpen}
+    >
+      <p className="aitem__detail">{resolved ? 'Reply sent to Emily Johnson. Timeline updated.' : item.detail}</p>
+      <p className="aitem__meta">{item.meta}</p>
+      <div className="aitem__actions">
         {resolved ? (
-          <button className="btn btn--quiet" onClick={openTarget}>
-            View
+          <button className="btn btn--secondary btn--sm" onClick={openTarget}>
+            View sent reply
           </button>
         ) : (
-          // NO FALSE AFFORDANCE: only the flows that exist in this prototype
-          // get an enabled button. The rest are visibly disabled instead of
-          // looking clickable and doing nothing.
+          // NO FALSE AFFORDANCE: only flows that exist in this prototype get an
+          // enabled button; the rest are visibly disabled and say why.
           <button
-            className={`btn ${item.id === 'decor-time' ? 'btn--primary' : 'btn--secondary'}`}
+            className={`btn ${item.id === 'decor-time' ? 'btn--primary' : 'btn--secondary'} btn--sm`}
             onClick={openTarget}
             disabled={!isJohnson}
             title={isJohnson ? undefined : 'Only the Johnson Wedding is built out in this prototype'}
           >
             {item.action}
-            <Icon name="arrowRight" size={14} />
+            <Icon name="arrowRight" size={13} />
           </button>
         )}
-      </span>
-    </li>
+      </div>
+    </DisclosureRow>
   )
 }
 
+// Two sibling controls rather than one: the row body expands for detail, and
+// the button navigates. Nesting a button inside a button is invalid HTML and
+// makes the target ambiguous anyway.
 function EventRow({ event, attention, onOpen }) {
-  const clickable = event.clickable
-
-  const content = (
-    <>
-      <span className="erow__date">
-        <span className="erow__dateMain">{event.dateLabel}</span>
-        <span className="erow__dateSub">{event.timeLabel}</span>
-      </span>
-
-      <span className="erow__main">
-        <span className="erow__name">{event.name}</span>
-        <span className="erow__clients">{event.clients}</span>
-        <span className="erow__meta">
-          <span className="erow__metaItem">
-            <Icon name="users" size={13} /> {event.guests} guests
-          </span>
-          <span className="erow__metaItem">
-            <Icon name="pin" size={13} /> {event.space}
-          </span>
-        </span>
-      </span>
-
-      <span className="erow__status">
-        {attention > 0 ? (
-          <Pill tone="urgent" icon="alert">
-            {attention} need{attention === 1 ? 's' : ''} attention
-          </Pill>
-        ) : (
-          <Pill tone="ok" icon="check">
-            On track
-          </Pill>
-        )}
-        <span className="erow__statusSub">
-          {event.status} · {event.openTasks} open {event.openTasks === 1 ? 'task' : 'tasks'}
-        </span>
-      </span>
-
-      {/* SIGNIFIER: the chevron appears only on the row that actually opens. */}
-      {clickable && <Icon name="chevronRight" size={18} className="erow__chev" />}
-    </>
-  )
-
-  if (!clickable) {
-    return <li className="erow erow--static">{content}</li>
-  }
+  const [open, setOpen] = useState(false)
 
   return (
-    <li>
-      <button className="erow erow--button" onClick={() => onOpen(event.id)}>
-        {content}
-      </button>
+    <li className={`erow2 ${open ? 'is-open' : ''} ${event.clickable ? 'erow2--live' : ''}`}>
+      <div className="erow2__line">
+        <button className="erow2__expand" onClick={() => setOpen(!open)} aria-expanded={open}>
+          <Icon name="chevronRight" size={15} className="erow2__chev" />
+          <span className="erow2__date">
+            <span className="erow2__dateMain">{event.dateLabel}</span>
+            <span className="erow2__dateSub">{event.timeLabel}</span>
+          </span>
+          <span className="erow2__name">
+            {event.name}
+            <span className="erow2__clients">{event.clients}</span>
+          </span>
+          {attention > 0 ? (
+            <Pill tone="urgent" icon="alert">
+              {attention}
+            </Pill>
+          ) : (
+            <Pill tone="ok" icon="check">
+              On track
+            </Pill>
+          )}
+        </button>
+
+        {event.clickable && (
+          <button className="btn btn--primary btn--sm erow2__cta" onClick={() => onOpen(event.id)}>
+            Open workspace
+            <Icon name="arrowRight" size={13} />
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="erow2__detail">
+          <dl className="minifacts">
+            <div>
+              <dt>Guests</dt>
+              <dd>{event.guests}</dd>
+            </div>
+            <div>
+              <dt>Spaces</dt>
+              <dd>{event.space}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{event.status}</dd>
+            </div>
+            <div>
+              <dt>Open tasks</dt>
+              <dd>{event.openTasks}</dd>
+            </div>
+          </dl>
+          {!event.clickable && (
+            <p className="erow2__note">Only the Johnson Wedding is built out in this prototype.</p>
+          )}
+        </div>
+      )}
     </li>
   )
 }
