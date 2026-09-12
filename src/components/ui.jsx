@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 // ---------------------------------------------------------------------------
 // Small shared UI pieces used by all three screens.
 //
@@ -174,5 +176,72 @@ export function Field({ label, value, children }) {
       <dt className="field__label">{label}</dt>
       <dd className="field__value">{children || value}</dd>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Progressive disclosure
+//
+// Both of these exist to show less at once without taking anything away. The
+// rule they follow: hiding content must never hide the *existence* of content.
+// Every tab and every collapsed header still reports its count, so the user can
+// see there are 6 vendors without having to look at all 6.
+// ---------------------------------------------------------------------------
+
+// Tabbed sections. The active tab is signified three ways at once — weight,
+// colour, and an underline — so it reads at a glance.
+export function Tabs({ tabs, active, onChange, label = 'Sections' }) {
+  return (
+    <div className="tabs" role="tablist" aria-label={label}>
+      {tabs.map((tab) => {
+        const isActive = tab.id === active
+        return (
+          <button
+            key={tab.id}
+            id={`tab-${tab.id}`}
+            role="tab"
+            aria-selected={isActive}
+            aria-controls={`panel-${tab.id}`}
+            className={`tab ${isActive ? 'is-active' : ''}`}
+            onClick={() => onChange(tab.id)}
+          >
+            {tab.icon && <Icon name={tab.icon} size={14} />}
+            <span className="tab__label">{tab.label}</span>
+            {tab.count != null && (
+              <span className={`tab__count ${tab.tone ? `tab__count--${tab.tone}` : ''}`}>{tab.count}</span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function TabPanel({ id, active, children }) {
+  if (id !== active) return null
+  return (
+    <div id={`panel-${id}`} role="tabpanel" aria-labelledby={`tab-${id}`} className="tabpanel">
+      {children}
+    </div>
+  )
+}
+
+// A card that starts closed. The whole header is the control, and the chevron
+// rotates so the open/closed state is visible without reading the label.
+export function Collapsible({ title, icon, badge, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <section className={`card collapsible ${open ? 'is-open' : ''}`}>
+      <button className="collapsible__head" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span className="collapsible__title">
+          {icon && <Icon name={icon} size={15} />}
+          {title}
+        </span>
+        {badge && <span className="collapsible__badge">{badge}</span>}
+        <Icon name="chevronRight" size={16} className="collapsible__chev" />
+      </button>
+      {open && <div className="card__body">{children}</div>}
+    </section>
   )
 }

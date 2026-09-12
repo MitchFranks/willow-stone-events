@@ -3,13 +3,21 @@
 // Job: in a few seconds, say what is happening at the venue and what needs the
 // manager's attention.
 //
-// Reading order is deliberate, strongest signal first:
+// REVISION NOTE (progressive disclosure):
+// The first version put four large stat tiles above the attention panel and
+// showed every supporting card expanded. That gave five competing blocks at the
+// same visual volume. Now the page leads with attention, the stats have shrunk
+// into a compact "At a glance" rail, and recent activity starts collapsed —
+// less on screen, same information one click away.
+//
+// Reading order, strongest signal first:
 //   1. Needs Attention   (the answer to "what do I do next?")
 //   2. Upcoming events   (the answer to "what is happening?")
-//   3. Today / activity  (supporting context, quietest)
+//   3. Rail: glance / today / activity  (supporting context, quietest)
 // ---------------------------------------------------------------------------
 
-import { Card, Icon, Pill } from './ui.jsx'
+import { Card, Collapsible, Icon, Pill } from './ui.jsx'
+import { VenueVignette } from './VenueArt.jsx'
 import { events, recentActivity, todaySchedule, venue, venueStats } from '../data.js'
 
 export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessage }) {
@@ -19,48 +27,34 @@ export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessag
 
   return (
     <div className="stack-lg">
-      <div className="pagehead">
-        <div>
-          <p className="pagehead__eyebrow">{venue.today}</p>
-          <h1 className="pagehead__title">Good morning, {venue.manager.split(' ')[0]}</h1>
-          <p className="pagehead__sub">
+      {/* Compact hero. The artwork sits inside the greeting row rather than
+          above it, so it adds polish without pushing attention down the page. */}
+      <section className="hero">
+        <div className="hero__text">
+          <p className="hero__eyebrow">{venue.today}</p>
+          <h1 className="hero__title">Good morning, {venue.manager.split(' ')[0]}</h1>
+          <p className="hero__sub">
             One event on site today and {open.length} {open.length === 1 ? 'item' : 'items'} waiting on you
             across {eventsWithAttention} {eventsWithAttention === 1 ? 'event' : 'events'}.
           </p>
         </div>
-        <div className="pagehead__aside">
+        <div className="hero__aside">
           <Pill tone="live" icon="circle">
             Alvarez &amp; Reed on site
           </Pill>
         </div>
-      </div>
-
-      {/* SIMILARITY: four stats share one shape; only the attention stat is
-          tinted, so the eye lands on the number that implies work. */}
-      <div className="statrow">
-        {venueStats.map((stat) => (
-          <Stat
-            key={stat.label}
-            label={stat.label}
-            tone={stat.tone}
-            // The attention tile is derived from live state so it can never
-            // disagree with the list directly beneath it.
-            value={stat.tone === 'attention' ? String(open.length) : stat.value}
-            note={stat.tone === 'attention' ? `across ${eventsWithAttention} events` : stat.note}
-          />
-        ))}
-      </div>
+        <VenueVignette />
+      </section>
 
       {/* ---------------------------------------------------------------
-          NEEDS ATTENTION — the whole point of the screen.
-          Given its own tinted common region, placed above everything else,
-          and the only place on the page that uses the attention colours.
+          NEEDS ATTENTION — the whole point of the screen, and now the
+          single loudest element on it.
          --------------------------------------------------------------- */}
-      <section className="attention">
+      <section className="attention attention--hero">
         <header className="attention__head">
           <div className="attention__headText">
             <h2 className="attention__title">
-              <Icon name="alert" size={18} />
+              <Icon name="alert" size={20} />
               Needs attention
             </h2>
             <p className="attention__sub">Sorted by what is due first. Everything else is on track.</p>
@@ -83,12 +77,7 @@ export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessag
 
       <div className="split">
         <div className="stack">
-          <Card
-            title="Upcoming events"
-            icon="calendar"
-            subtitle="Next five bookings"
-            action={<span className="card__hint">Johnson Wedding opens a full workspace</span>}
-          >
+          <Card title="Upcoming events" icon="calendar" subtitle="Next five bookings">
             <ul className="eventlist">
               {events.map((event) => (
                 <EventRow
@@ -103,6 +92,27 @@ export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessag
         </div>
 
         <div className="stack">
+          {/* The four stat tiles from v1, reduced to a quiet rail. Only the
+              attention figure keeps its colour. */}
+          <Card title="At a glance" icon="circle" subtitle="This month">
+            <ul className="glance">
+              {venueStats.map((stat) => {
+                const isAttention = stat.tone === 'attention'
+                return (
+                  <li className={`glance__row ${isAttention ? 'glance__row--attention' : ''}`} key={stat.label}>
+                    <span className="glance__label">{stat.label}</span>
+                    <span className="glance__value">
+                      {isAttention ? open.length : stat.value}
+                      <span className="glance__note">
+                        {isAttention ? `across ${eventsWithAttention} events` : stat.note}
+                      </span>
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </Card>
+
           <Card title="Today's schedule" icon="clock" subtitle="Saturday, September 12">
             <ol className="daylist">
               {todaySchedule.map((slot) => (
@@ -119,7 +129,10 @@ export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessag
             </ol>
           </Card>
 
-          <Card title="Recent activity" icon="clock" subtitle="Across all events">
+          {/* Starts closed: it is a log of things already handled, which is the
+              opposite of what this screen is for. The badge keeps its existence
+              visible. */}
+          <Collapsible title="Recent activity" icon="clock" badge={`${recentActivity.length} updates`}>
             <ul className="activity">
               {recentActivity.map((entry, i) => (
                 <li className="activity__item" key={i}>
@@ -135,19 +148,9 @@ export function Dashboard({ attention, eventAttention, onOpenEvent, onOpenMessag
                 </li>
               ))}
             </ul>
-          </Card>
+          </Collapsible>
         </div>
       </div>
-    </div>
-  )
-}
-
-function Stat({ label, value, note, tone }) {
-  return (
-    <div className={`stat ${tone ? `stat--${tone}` : ''}`}>
-      <span className="stat__label">{label}</span>
-      <span className="stat__value">{value}</span>
-      <span className="stat__note">{note}</span>
     </div>
   )
 }
@@ -239,8 +242,19 @@ function EventRow({ event, attention, onOpen }) {
         </span>
       </span>
 
-      {/* SIGNIFIER: the chevron appears only on the row that actually opens. */}
-      {clickable && <Icon name="chevronRight" size={18} className="erow__chev" />}
+      {/* REVISION — SIGNIFIER: v1 relied on a pale chevron that only appeared
+          to mean something on hover, so the way into the event was effectively
+          invisible at rest. It is now a labelled button. */}
+      <span className="erow__cta">
+        {clickable ? (
+          <span className="btn btn--primary btn--sm erow__ctaBtn">
+            Open workspace
+            <Icon name="arrowRight" size={13} />
+          </span>
+        ) : (
+          <span className="erow__ctaEmpty" aria-hidden="true" />
+        )}
+      </span>
     </>
   )
 
