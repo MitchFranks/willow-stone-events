@@ -21,7 +21,7 @@
 
 import { useState } from 'react'
 import { Avatar, Field, Icon, Pill, TabPanel, Tabs } from './ui.jsx'
-import { VenueBanner } from './VenueArt.jsx'
+import estateImage from '../assets/event-estate.jpg'
 import { johnson } from '../data.js'
 
 export function EventWorkspace({ attention, replySent, onBack, onOpenMessage }) {
@@ -53,9 +53,10 @@ export function EventWorkspace({ attention, replySent, onBack, onOpenMessage }) 
     <div className="stack-lg">
       {/* ------------------------- IDENTITY BAND ------------------------- */}
       <section className="eventhead">
-        <VenueBanner />
+        <img className="eventhead__img" src={estateImage} alt="" />
+        <div className="eventhead__scrim" aria-hidden="true" />
         <div className="eventhead__overlay">
-          <button className="backlink" onClick={onBack}>
+          <button className="backlink backlink--onDark" onClick={onBack}>
             <Icon name="arrowLeft" size={15} />
             All events
           </button>

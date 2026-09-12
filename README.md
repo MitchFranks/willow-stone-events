@@ -102,17 +102,21 @@ other way when you resolve something.
 
 **Primary job:** answer "what needs my attention?" before answering anything else.
 
-**What's actually on it:** a compact greeting card with today's date (Saturday, September 12,
-2026), a one-line summary of how many items are waiting, and a small illustration of the venue.
-Directly below it — and this is the first substantial block on the page — a red-bordered
-**Needs attention** panel with five items sorted by what's due first, each tagged with which
-event it belongs to and each with an action button. Below that, an **Upcoming events** list of
-five bookings with dates, client names, guest counts, spaces, and either an attention badge or
-an "On track" badge; the Johnson Wedding row carries a green **"Open workspace →"** button. The
-right rail holds the quieter supporting material: **At a glance** (events this month, needs
-attention, guests hosted, outstanding balances), **Today's schedule** (five time slots for the
-wedding happening on site today), and **Recent activity**, which starts collapsed behind a
-header showing "5 updates."
+**What's actually on it:** the page opens on a photographic welcome band — a wedding reception
+under Edison bulbs — carrying the date, "Good morning, Dana," and the one sentence that matters:
+*"One event is on site today, and 5 items need your attention across 3 events."* One button,
+**"See what needs attention,"** scrolls to the queue.
+
+Below that, the red-bordered **Needs attention** panel. Each of the five items is a single line
+— due date, title, and which event it belongs to — that expands on click to reveal the detail
+and its action button. The most urgent one is open by default, so the screen still answers "what
+do I do next?" without being read. Then **Upcoming events**: five one-line rows that expand for
+guest count, spaces, status and open tasks; the Johnson Wedding row carries a green
+**"Open workspace →"** button directly on the line.
+
+The right rail holds the quieter material: **At a glance** (events this month, needs attention,
+guests hosted, outstanding balances), **Today's schedule**, and **Recent activity**, which starts
+collapsed behind a header showing "5 updates."
 
 **Why it earned a slot:** this is the screen that has to carry the fundamental value on its own.
 If a venue manager can't look at this for a few seconds and come away knowing what's on fire,
@@ -127,9 +131,9 @@ happening at their venue and what they need to do next?*
 **Primary job:** show the complete status of one event without making the user open anything
 else.
 
-**What's actually on it:** three things stay pinned no matter what you came to do. A header
-banner with an illustration of the venue, carrying the event name, the clients, and a "3 need
-attention" badge. Then a row of four key facts (date — Saturday, September 19, 2026 · ceremony —
+**What's actually on it:** three things stay pinned no matter what you came to do. A
+photographic header banner of the estate grounds with a ceremony set up on the lawn, carrying the
+event name, the clients, and a "3 need attention" badge. Then a row of four key facts (date — Saturday, September 19, 2026 · ceremony —
 4:00 PM · guest count — 150 confirmed · spaces — Garden Terrace / Stone Hall). Then a **Needs
 your attention** band with three cards: the decorating time change, the final catering count due
 Sept 14, and the $4,250 balance due Sept 17. The first card has the button that goes to Screen 3;
@@ -403,12 +407,24 @@ that don't exist. But the first thing I instinctively did when trying to reach a
 "Events," and nothing happened. A disabled control that looks like the obvious path costs the
 user more time than not having it at all.
 
-**4. It kept a card that works against the screen's job.** "Recent activity" is a log of things
+**4. It opened like a briefing, not like a product.** This one only became obvious after fixing
+the first three. Even with less on screen, the dashboard still greeted a first-time viewer with a
+wall of fully-written work items. Nothing was wrong with any individual element — the problem was
+that the page led with obligations instead of orienting you first. Software people actually enjoy
+using tends to welcome you, then reveal detail as you ask for it.
+
+**5. It kept a card that works against the screen's job.** "Recent activity" is a log of things
 that already happened, sitting expanded on a screen whose entire purpose is surfacing what still
 needs doing. The AI even flagged this as the weakest element in its own first-read evaluation,
 then left it fully expanded anyway.
 
 ### What I changed
+
+The revision happened in two passes. The first cut the *amount* on screen; the second changed how
+the page *greets* you, after looking at it again and realising it still opened like a briefing
+rather than a product.
+
+#### Pass 1 — hide the bulk
 
 **Event workspace — tabbed detail.** Only the things that are true of the event regardless of why
 you opened it stay pinned: the header, the four key facts (date, ceremony, guest count, spaces),
@@ -435,11 +451,30 @@ shadow so it sits visually forward of everything else. "Recent activity" now sta
 **Navigation.** Calendar and Inbox are gone, and **Events** now actually works — it opens the
 Johnson Wedding workspace.
 
-**Artwork.** I added two hand-drawn SVG illustrations of the venue (willows, string lights, the
-stone hall): a wide banner behind the event title and a small vignette beside the dashboard
-greeting. They're drawn in the same palette as the UI and committed into the repo as code, so
-they can't 404 and there's no licensing question. On narrow screens the banner drops to 45%
-opacity so the overlaid title stays readable.
+#### Pass 2 — welcome first, then disclose
+
+Pass 1 made the workspace much better but left the dashboard still opening with five fully
+written attention items and five four-line event rows. It was organised, but it still arrived all
+at once. Most software people actually enjoy using doesn't do that.
+
+**A welcome band instead of a data header.** The dashboard now opens on a full-width photograph
+with a single sentence and one button. It states the number that matters and gives you one thing
+to do. Nothing else competes with it.
+
+**Both long lists became disclosure rows.** Every attention item and every event is now one line
+that opens on click. The closed line still carries enough to triage — status pill, title, which
+event — so opening a row is for *acting* on it, not for finding out what it is. The most urgent
+attention item is open by default so the screen's job still gets done without any clicking.
+
+**Real photography.** Two photographs from Pixabay replaced the SVG illustrations I drew in pass
+1: a reception under Edison bulbs for the dashboard, and estate grounds with a ceremony set up on
+the lawn for the event header. They're downsized, compressed and committed into `src/assets/`
+rather than hot-linked, so the prototype can't break if the source host changes. Both sit under
+an angled dark scrim so the overlaid text keeps its contrast; on narrow screens the scrim becomes
+a straight vertical gradient because the angled one gets cropped.
+
+**Collapsed rails.** "Today's schedule" and "Recent activity" are both collapsible cards now, each
+with a count badge.
 
 ### Why I changed it
 
@@ -491,9 +526,15 @@ button.
 Eleven cards stacked in two columns versus a banner, four pinned facts, three attention cards,
 and a tab strip.
 
-**Measured result:** at a 1440px viewport the event workspace went from **2553px to 1570px** of
-page height — 38% less page for the same information — and the dashboard went from **1849px to
-1703px**. The workspace now fits in roughly one and a half screens instead of nearly three.
+**Measured result:** at a 1440px viewport the event workspace went from **2553px to 1636px** of
+page height — 36% less page for exactly the same information.
+
+The dashboard is a more honest story: it went from **1849px to 1753px**, which is barely a change,
+because the welcome photograph takes real vertical space. The number that actually moved is how
+much is *expanded* at once — it used to open with five fully written attention items (title,
+description and button each) and five four-line event rows. It now opens with one expanded item,
+four single lines, five single-line events, and two collapsed cards. Same information, roughly the
+same height, but the page no longer hands you all of it before you've asked.
 
 ### Git workflow for this assignment
 
@@ -513,20 +554,37 @@ willow-stone-events/
 ├── vite.config.js             dev server + build settings
 ├── README.md                  this file
 ├── DESIGN-PRINCIPLES.md       longer notes on grouping, signifiers, and Gall's Law
+├── docs/                      before & after screenshots for the revision write-up
 └── src/
     ├── main.jsx               React entry point
     ├── App.jsx                all app state and navigation between the three screens
     ├── data.js                every piece of mock content in the prototype
     ├── styles.css             the whole design system in one file
+    ├── assets/
+    │   ├── hero-reception.jpg dashboard welcome band
+    │   └── event-estate.jpg   event workspace header
     └── components/
         ├── AppShell.jsx       top bar, breadcrumbs, footer — wraps all three screens
         ├── Dashboard.jsx      Screen 1
         ├── EventWorkspace.jsx Screen 2
         ├── Communication.jsx  Screen 3
-        └── ui.jsx             shared pieces: Card, Pill, Avatar, Icon, Field
+        └── ui.jsx             shared pieces: Card, Pill, Avatar, Icon, Field,
+                               Tabs, Collapsible, DisclosureRow
 ```
 
 There's no router and no server. `App.jsx` holds two pieces of state — which screen is showing,
 and which attention items have been resolved — and every count on every screen is calculated from
 that second one. That's why resolving the decorating request on Screen 3 correctly updates the
 badge on Screen 2 and the counter on Screen 1 without any of them being hardcoded.
+
+---
+
+## Credits
+
+Photography from [Pixabay](https://pixabay.com), used under the
+[Pixabay Content License](https://pixabay.com/service/license-summary/) (free to use, attribution
+not required — included here anyway). Images were downsized and compressed, and are committed
+into `src/assets/` rather than hot-linked so the prototype doesn't depend on an external host.
+
+Everything else — the venue, the events, the people, the emails, the payments — is invented for
+this assignment. Any resemblance to a real venue or client is coincidental.

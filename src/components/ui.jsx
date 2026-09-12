@@ -226,6 +226,26 @@ export function TabPanel({ id, active, children }) {
   )
 }
 
+// One line that opens. Used for the attention queue and the events list so a
+// list of ten things is ten lines, not ten paragraphs.
+//
+// The closed state still carries everything needed to triage — status, title,
+// which event it belongs to — so opening a row is for acting on it, not for
+// finding out what it is.
+export function DisclosureRow({ className = '', summary, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <li className={`drow ${className} ${open ? 'is-open' : ''}`}>
+      <button className="drow__summary" onClick={() => setOpen(!open)} aria-expanded={open}>
+        {summary}
+        <Icon name="chevronRight" size={16} className="drow__chev" />
+      </button>
+      {open && <div className="drow__detail">{children}</div>}
+    </li>
+  )
+}
+
 // A card that starts closed. The whole header is the control, and the chevron
 // rotates so the open/closed state is visible without reading the label.
 export function Collapsible({ title, icon, badge, defaultOpen = false, children }) {
