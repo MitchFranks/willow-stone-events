@@ -107,14 +107,8 @@ export function AppShell({ children }) {
           </button>
 
           {/* No logo yet: the name is set in Geist Light wherever a mark would go. */}
-          <Link
-            href="/"
-            aria-label="Welcome page"
-            className="flex items-baseline gap-2 rounded-sm"
-            title="Go to the welcome page"
-          >
+          <Link href="/" className="flex items-baseline gap-2 rounded-sm" title="Back to the welcome screen">
             <span className="text-title font-light text-ink">Vue</span>
-            <span className="text-label font-medium text-ink-muted">Welcome</span>
           </Link>
           {/* The venue this workspace belongs to. */}
           <span className="hidden items-center gap-2 text-small font-medium text-ink sm:flex">

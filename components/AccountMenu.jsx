@@ -18,6 +18,7 @@ import { Avatar, Icon } from './ui/primitives'
 import { usePrototypeReset } from '@/lib/usePrototypeReset'
 
 const ITEMS = [
+  { href: '/', label: 'Welcome page', icon: 'home' },
   { href: '/account', label: 'Account', icon: 'user' },
   { href: '/settings', label: 'Settings', icon: 'settings' }
 ]
