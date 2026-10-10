@@ -4,16 +4,20 @@
 // DESIGN LIBRARY — domain components
 //
 // These encode the product's own concepts: an attention item, an event, a
-// shift, a staff member, an availability grid. Built on the primitives so the
+// task, an overlay, a toast. Built on the primitives so the
 // borders, status colours and button hierarchy stay consistent.
 // ---------------------------------------------------------------------------
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { cx } from '@/lib/cx'
-import { hourLabel } from '@/lib/store'
 import { daysOutLabel } from '@/lib/mock/events'
-import { Avatar, Button, Card, Icon, ListRow, StatusBadge } from './primitives'
+import { Button, Icon, ListRow, StatusBadge } from './primitives'
+
+/** The one way to say how many roles are unfilled: "1 open spot", "3 open spots". */
+export function openSpots(n) {
+  return `${n} open spot${n === 1 ? '' : 's'}`
+}
 
 /* ---------------------------------------------------------- UpNextItem --
  *
@@ -24,9 +28,13 @@ import { Avatar, Button, Card, Icon, ListRow, StatusBadge } from './primitives'
  * (status-now) or this week (status-soon) in words, before the title. Only
  * the first item in a list gets the filled ink button, so one action leads.
  * Lists of these sit in a container with `divide-y divide-line`.
+ *
+ * `onDismiss` adds a quiet "Hide" next to the action, but only for items that
+ * are `dismissible`: staffing items can't be hidden, because hiding them would
+ * look like fixing them. Pair it with useHideWithUndo so a hide can be undone.
  */
 
-export function UpNextItem({ item, compact = false, first = false, badge = false }) {
+export function UpNextItem({ item, compact = false, first = false, badge = false, onDismiss }) {
   const urgent = item.tone === 'urgent'
   return (
     <article className="bg-surface px-4 py-4 transition-colors duration-150 hover:bg-surface-sunken/40 sm:px-6">
@@ -39,13 +47,9 @@ export function UpNextItem({ item, compact = false, first = false, badge = false
                 {urgent ? 'Do first' : 'Coming up'}
               </StatusBadge>
             )}
-            <Link
-              href={`/events/${item.eventId}`}
-              className="rounded-sm px-1 text-small text-ink-muted transition-colors hover:text-accent"
-            >
-              {item.eventName}
-            </Link>
-            <span className="text-small text-ink-muted">· {item.meta}</span>
+            <span className="text-small text-ink-muted">
+              {item.eventName} · {item.meta}
+            </span>
           </div>
 
           <h3 className="text-heading font-medium text-ink">{item.title}</h3>
@@ -64,7 +68,12 @@ export function UpNextItem({ item, compact = false, first = false, badge = false
           )}
         </div>
 
-        <div className="shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
+          {onDismiss && item.dismissible && (
+            <Button variant="ghost" size="sm" onClick={() => onDismiss(item)}>
+              Hide
+            </Button>
+          )}
           <Button href={item.href} variant={first ? 'primary' : 'secondary'} size="sm">
             {item.actionLabel}
             <Icon name="arrowRight" size={14} />
@@ -73,6 +82,21 @@ export function UpNextItem({ item, compact = false, first = false, badge = false
       </div>
     </article>
   )
+}
+
+/**
+ * Hide an Up Next item, with a toast that can undo it. Returns the handler to
+ * pass to UpNextItem's onDismiss. `store` is the useStore() value.
+ */
+export function useHideWithUndo(store) {
+  const { dismissAttention, restoreAttention, toast } = store
+  return (item) => {
+    dismissAttention(item.id)
+    toast(`Hid "${item.title}".`, 'done', {
+      small: 'It is still open. Show hidden items on Up Next or in Settings brings it back.',
+      actions: [{ label: 'Undo', onClick: () => restoreAttention(item.id) }]
+    })
+  }
 }
 
 /* -------------------------------------------------------------- EventCard -- */
@@ -101,7 +125,7 @@ export function EventCard({ event, coverage, attentionCount = 0, guide = false }
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4">
         {attentionCount > 0 ? (
           <StatusBadge tone="urgent" size="sm">
-            {attentionCount} up next
+            {attentionCount} in Up Next
           </StatusBadge>
         ) : (
           <StatusBadge tone="done" size="sm">
@@ -115,7 +139,7 @@ export function EventCard({ event, coverage, attentionCount = 0, guide = false }
             </StatusBadge>
           ) : (
             <StatusBadge tone="warn" size="sm">
-              Needs {coverage.short} more
+              {openSpots(coverage.short)}
             </StatusBadge>
           ))}
         <span className="ml-auto text-small text-ink-muted">{event.bookingStatus} · {daysOutLabel(event)}</span>
@@ -137,228 +161,22 @@ export function EventRow({ event, coverage, attentionCount = 0 }) {
         <div className="hidden items-center gap-2 sm:flex">
           {attentionCount > 0 && (
             <StatusBadge tone="urgent" size="sm">
-              {attentionCount}
+              {attentionCount} in Up Next
             </StatusBadge>
           )}
           {coverage && !coverage.complete && (
             <StatusBadge tone="warn" size="sm">
-              Needs {coverage.short} more
+              {openSpots(coverage.short)}
             </StatusBadge>
           )}
           {coverage && coverage.complete && (
             <StatusBadge tone="done" size="sm">
-              Staffed
+              Fully staffed
             </StatusBadge>
           )}
         </div>
       }
     />
-  )
-}
-
-/* -------------------------------------------------------------- StaffCard -- */
-
-export function StaffCard({ person, shiftCount, trailing }) {
-  return (
-    <ListRow
-      href={`/staff/${person.id}`}
-      leading={<Avatar initials={person.initials} />}
-      title={person.name}
-      sub={`${person.role} · ${person.preferredHours}`}
-      meta={shiftCount != null ? `${shiftCount} shift${shiftCount === 1 ? '' : 's'} this week` : undefined}
-      trailing={trailing}
-    />
-  )
-}
-
-/* -------------------------------------------------------------- AssignmentCard -- */
-// Used in staff detail and shift lists. Shows status with a badge, and the
-// accept/decline controls when the viewer can act on them.
-
-export function AssignmentCard({ assignment, event, block, onAccept, onDecline, showActions }) {
-  const tone =
-    assignment.status === 'accepted'
-      ? 'done'
-      : assignment.status === 'declined'
-        ? 'declined'
-        : assignment.status === 'draft'
-          ? 'info'
-          : 'pending'
-  return (
-    <div className="border-b border-line px-4 py-3 last:border-b-0">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <Link href={`/staffing/${event.id}`} className="font-medium text-ink transition-colors hover:text-accent">
-            {event.name}
-          </Link>
-          <p className="text-small text-ink-muted">
-            {block.name} · {event.dateShort} · {hourLabel(block.start)}–{hourLabel(block.end)}
-          </p>
-          <p className="text-small text-ink-muted">Role: {assignment.role}</p>
-          {assignment.status === 'declined' && assignment.declineReason && (
-            <p className="mt-1 text-small text-status-now">Reason: {assignment.declineReason}</p>
-          )}
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <StatusBadge tone={tone} size="sm">
-            {assignment.status === 'accepted'
-              ? 'Accepted'
-              : assignment.status === 'declined'
-                ? 'Declined'
-                : assignment.status === 'draft'
-                  ? 'Not sent'
-                  : 'Pending'}
-          </StatusBadge>
-          {showActions && assignment.status !== 'declined' && (
-            <div className="flex gap-1.5">
-              {assignment.status !== 'accepted' && (
-                <Button size="sm" variant="secondary" onClick={onAccept}>
-                  Accept
-                </Button>
-              )}
-              <Button size="sm" variant="danger" onClick={onDecline}>
-                Decline
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="mt-2">
-        <Link
-          href={`/staffing/${event.id}?block=${block.id}&role=${encodeURIComponent(assignment.role)}`}
-          className="text-small text-accent underline-offset-4 hover:underline"
-        >
-          Open on the board
-        </Link>
-      </div>
-    </div>
-  )
-}
-
-/* ----------------------------------------------------------- EventBlock -- */
-// One block of an event (Setup / Ceremony / Reception / Teardown) with its
-// staffing requirement and who is currently on it.
-
-export function EventBlock({ event, block, assignments, openPositions, children }) {
-  const blockPositions = openPositions.filter((g) => g.block.id === block.id)
-  return (
-    <Card
-      title={block.name}
-      subtitle={`${hourLabel(block.start)} – ${hourLabel(block.end)}${block.kind === 'setup' ? ' · Load-in / setup (operations)' : block.kind === 'teardown' ? ' · Teardown (operations)' : ''}`}
-      action={
-        blockPositions.length ? (
-          <StatusBadge tone="warn" size="sm">
-            Needs {blockPositions.reduce((n, g) => n + g.short, 0)}
-          </StatusBadge>
-        ) : (
-          <StatusBadge tone="done" size="sm">
-            Staffed
-          </StatusBadge>
-        )
-      }
-      bodyClassName="px-0 py-0"
-    >
-      <p className="border-b border-line px-4 py-3 text-small text-ink-muted sm:px-6">{block.note}</p>
-
-      <div className="border-b border-line px-4 py-3 sm:px-6">
-        <div className="text-small text-ink-muted">Requires</div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {block.requirements.map((requirement) => {
-            const filled = assignments.filter((a) => a.role === requirement.role && a.status === 'accepted').length
-            const ok = filled >= requirement.count
-            return (
-              <span
-                key={requirement.role}
-                className={cx(
-                  'inline-flex h-6 items-center gap-1 rounded-full pl-2 pr-2.5 text-label font-medium',
-                  ok ? 'bg-status-clear-soft text-status-clear' : 'bg-status-now-soft text-status-now'
-                )}
-              >
-                <Icon name={ok ? 'check' : 'alert'} size={13} />
-                {requirement.role}: <span className="font-mono tabular-nums">{filled}/{requirement.count}</span>
-              </span>
-            )
-          })}
-        </div>
-      </div>
-
-      {children}
-    </Card>
-  )
-}
-
-/* -------------------------------------------------------- AvailabilityGrid -- */
-// A simple 7-day x hour grid. Filled cells = stated availability. Deliberately
-// blocky and unstyled-looking; this is a wireframe of a scheduling grid.
-
-const GRID_START = 7
-const GRID_END = 24
-
-export function AvailabilityGrid({ person, highlight }) {
-  const days = Object.keys(person.availability)
-  const hours = []
-  for (let h = GRID_START; h < GRID_END; h += 1) hours.push(h)
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[520px] border-collapse font-mono text-label tabular-nums">
-        <caption className="sr-only">{person.name} weekly availability</caption>
-        <thead>
-          <tr>
-            <th scope="col" className="w-10 border border-line bg-surface-sunken p-1 text-left font-sans font-medium text-ink-muted">
-              Day
-            </th>
-            {hours.map((h) => (
-              <th key={h} scope="col" className="border border-line bg-surface-sunken p-1 font-normal text-ink-muted">
-                {h % 12 === 0 ? 12 : h % 12}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {days.map((day) => (
-            <tr key={day}>
-              <th scope="row" className="border border-line bg-surface-sunken p-1 text-left font-sans font-medium text-ink">
-                {day}
-              </th>
-              {hours.map((h) => {
-                const free = (person.availability[day] || []).some((w) => w.start <= h && w.end >= h + 1)
-                const isHighlight =
-                  highlight && highlight.day === day && h >= Math.floor(highlight.start) && h < highlight.end
-                return (
-                  <td
-                    key={h}
-                    className={cx(
-                      'border border-line p-0',
-                      free ? 'bg-status-clear-soft' : 'bg-surface',
-                      isHighlight && 'outline-2 outline-offset-[-2px] outline-accent'
-                    )}
-                  >
-                    <span className="sr-only">
-                      {day} {hourLabel(h)} {free ? 'available' : 'unavailable'}
-                    </span>
-                    <span className="block h-4 w-full" />
-                  </td>
-                )
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="mt-3 flex flex-wrap items-center gap-4 text-small text-ink-muted">
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-3 w-3 border border-line bg-status-clear-soft" /> Available
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-3 w-3 border border-line bg-surface" /> Not available
-        </span>
-        {highlight && (
-          <span className="flex items-center gap-1">
-            <span className="inline-block h-3 w-3 border-2 border-accent" /> Position being filled
-          </span>
-        )}
-      </p>
-    </div>
   )
 }
 
@@ -400,27 +218,72 @@ export function TaskRow({ task, onToggle }) {
 }
 
 /* ----------------------------------------------------------------- Modal --- */
-// Focus is moved into the dialog on open and Escape closes it. Backdrop click
-// closes too — USER CONTROL: never trap the tester.
+// The one overlay in the product. Two shapes, same behaviour:
+//   variant="dialog"  centred box (confirmations, short forms)
+//   variant="sheet"   right-hand panel, a bottom sheet under 640px (longer
+//                     work: asking staff, reviewing texts, a staff phone)
+// Focus moves in on open (to [data-autofocus] if present), Tab cycles inside,
+// Escape and backdrop click close, and focus returns to the opener. USER
+// CONTROL: never trap the tester.
 
-export function Modal({ open, onClose, title, children, footer, labelledBy = 'modal-title' }) {
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  subtitle,
+  children,
+  footer,
+  labelledBy = 'modal-title',
+  variant = 'dialog',
+  width = 'sm:w-[460px]'
+}) {
   const ref = useRef(null)
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
+    const opener = document.activeElement
+    const panel = ref.current
+    ;(panel?.querySelector('[data-autofocus]') || panel)?.focus()
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose?.()
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        closeRef.current?.()
+      } else if (e.key === 'Tab' && panel) {
+        const items = [...panel.querySelectorAll(FOCUSABLE)].filter((el) => el.offsetParent !== null)
+        if (!items.length) return
+        const first = items[0]
+        const last = items[items.length - 1]
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
     }
-    document.addEventListener('keydown', onKey)
-    ref.current?.focus()
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+    panel?.addEventListener('keydown', onKey)
+    return () => {
+      panel?.removeEventListener('keydown', onKey)
+      if (opener && typeof opener.focus === 'function' && document.contains(opener)) opener.focus()
+    }
+  }, [open])
 
   if (!open) return null
 
+  const sheet = variant === 'sheet'
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4"
+      className={cx(
+        'fixed inset-0 z-50 flex bg-black/45',
+        sheet ? 'items-end sm:items-stretch sm:justify-end' : 'items-end justify-center sm:items-center sm:p-4'
+      )}
       onClick={onClose}
     >
       <div
@@ -429,39 +292,51 @@ export function Modal({ open, onClose, title, children, footer, labelledBy = 'mo
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-md border border-line bg-surface shadow-overlay sm:rounded-md motion-safe:animate-[vue-rise_.2s_ease-out]"
+        className={cx(
+          'flex w-full flex-col border-line bg-surface shadow-overlay focus:outline-none',
+          sheet
+            ? cx('max-h-[88vh] rounded-t-3xl border-t sm:max-h-none sm:rounded-none sm:rounded-l-3xl sm:border-t-0 sm:border-l', width)
+            : 'max-h-[90vh] max-w-lg rounded-t-md border sm:rounded-md motion-safe:animate-[vue-rise_.2s_ease-out]'
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-start justify-between gap-3 border-b border-line px-6 py-4">
-          <h2 id={labelledBy} className="text-title font-light text-ink">
-            {title}
-          </h2>
+          <div className="min-w-0">
+            <h2 id={labelledBy} className="text-title font-light text-ink">
+              {title}
+            </h2>
+            {subtitle && <p className="mt-0.5 text-small text-ink-muted">{subtitle}</p>}
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-sm text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-sm text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink"
           >
             <Icon name="x" size={14} />
             <span className="sr-only">Close</span>
           </button>
         </header>
-        <div className="px-6 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
         {footer && <footer className="flex flex-wrap justify-end gap-2 border-t border-line px-6 py-4">{footer}</footer>}
       </div>
     </div>
   )
 }
 
-/* ----------------------------------------------------- ConfirmationToast --- */
+/* ----------------------------------------------------------------- Toasts --- */
 // FEEDBACK: every meaningful action drops one of these. role="status" so it is
 // announced to screen readers without stealing focus.
+//
+// A toast is { id, message, tone?, small?, actions? }. `actions` is a list of
+// { label, onClick } shown as small buttons (e.g. Undo, Open Jo's phone); the
+// toast closes after an action runs. Hosts own their timing.
 
 export function ToastHost({ toasts, onDismiss }) {
   return (
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 p-3"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-center gap-2 p-3"
     >
       {toasts.map((t) => (
         <div
@@ -473,7 +348,27 @@ export function ToastHost({ toasts, onDismiss }) {
             size={16}
             className={cx('mt-0.5', t.tone === 'urgent' ? 'text-status-now' : 'text-status-clear')}
           />
-          <span className="flex-1">{t.message}</span>
+          <div className="min-w-0 flex-1">
+            <p>{t.message}</p>
+            {t.small && <p className="mt-1 text-label text-ink-muted">{t.small}</p>}
+            {t.actions?.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {t.actions.map((a) => (
+                  <Button
+                    key={a.label}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      a.onClick()
+                      onDismiss(t.id)
+                    }}
+                  >
+                    {a.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
           <button type="button" onClick={() => onDismiss(t.id)} className="rounded-sm text-ink-muted transition-colors hover:text-ink">
             <Icon name="x" size={13} />
             <span className="sr-only">Dismiss</span>

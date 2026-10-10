@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // The event as a picture: time runs down the page, one column per role. Each
 // bar is a timeline block that needs that role, placed by its start and end.
-// Solid = covered, dashed = still open. Overlapping blocks for one role (say
+// Solid = fully staffed, dashed = open spots. Overlapping blocks for one role (say
 // dinner service inside the reception) sit side by side in that role's column.
 // Tapping a bar jumps to that block's section below.
 // ---------------------------------------------------------------------------
@@ -11,15 +11,15 @@
 import Link from 'next/link'
 import { cx } from '@/lib/cx'
 import { Icon } from '@/components/ui/primitives'
-import { coverage, firstName, fmtH, rangeLabel, rolesOf } from '@/lib/staffing/derive'
+import { coverage, firstName, fmtH, openSpotsText, rangeLabel, rolesOf } from '@/lib/staffing/derive'
 
 const PX_PER_HOUR = 32
 
 /** What a bar says: the state first, the count under it. */
 function headline(c) {
-  if (c.confirmed >= c.need) return c.extra > 0 ? `Filled +${c.extra}` : 'Filled'
-  if (c.toFind > 0) return `Needs ${c.toFind} more`
-  if (c.waiting > 0) return `Waiting on ${c.waiting}`
+  if (c.confirmed >= c.need) return c.extra > 0 ? `Fully staffed +${c.extra}` : 'Fully staffed'
+  if (c.toFind > 0) return openSpotsText(c.toFind)
+  if (c.waiting > 0) return `${c.waiting} waiting`
   return `${c.notSent} not sent`
 }
 
@@ -55,11 +55,11 @@ export function TimeChart({ eventId, blocks, roles, st }) {
   const segLanes = Math.max(1, ...segments.map((x) => x.lane + 1))
 
   const jump = (id) => {
-    document.getElementById(`block-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    document.getElementById(`block-${id}`)?.scrollIntoView({ block: 'start' })
   }
 
   return (
-    <div className="surface-card mb-5 overflow-x-auto px-4 py-4" role="group" aria-label="Staffing by time and role">
+    <div className="overflow-x-auto" role="group" aria-label="Staffing by time and role">
       <div className="grid min-w-[620px]" style={{ gridTemplateColumns: `60px 118px repeat(${columns.length}, minmax(110px, 1fr))` }}>
         <div />
         <Link

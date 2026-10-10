@@ -4,13 +4,16 @@
 // SCREEN 0 — Welcome.
 //
 // The one screen that is not the product. The first screenful says what Vue
-// is in a single breath: one line, two buttons, and a picture of the product
+// is in a single breath: one line, one way in, and a picture of the product
 // on a laptop and a phone. Scrolling down gives short sections on how it
 // works, what is inside, and who it is for, each kept to a line or two.
 //
-// Hero photo: public/images/hero-wedding.jpg, "Elegant wedding reception
-// tables with floral decorations" by Mathis Payet Descombes, Unsplash License
-// (https://unsplash.com/photos/FeO_txj9yVc).
+// ONE WAY IN: the product is entered through "Open Up Next" everywhere on the
+// page (header, hero, closing). The only other button, "Fill open spots",
+// goes somewhere different on purpose: straight to the Staffing Planner.
+//
+// PHOTO STUBS: this is a prototype, so where a photo will go there is a
+// labelled placeholder (PhotoStub) saying what the photo should show.
 //
 // The two previews are simplified drawings of the Up Next screen, mostly grey
 // bars. The only words in them are the top items' titles, read from the live
@@ -20,8 +23,46 @@
 import Link from 'next/link'
 import { useStore } from '@/lib/store'
 import { cx } from '@/lib/cx'
-import { asset } from '@/lib/asset'
 import { Button, Icon } from './ui/primitives'
+import { PrototypeNotice } from './onboarding/PrototypeNotice'
+
+const CTA = { href: '/up-next', label: 'Open Up Next' }
+
+/**
+ * Where a photo will go: a box with a diagonal cross and a label saying what
+ * the photo should show. `dark` is the full-bleed version behind the dark hero
+ * and closing sections: it fills its section and draws in white lines.
+ */
+function PhotoStub({ label, dark = false, className }) {
+  return (
+    <div
+      role="img"
+      aria-label={`Photo placeholder: ${label}`}
+      className={cx(
+        'overflow-hidden',
+        dark ? 'absolute inset-0 -z-20 bg-ink' : 'relative rounded-md border border-line bg-surface-sunken',
+        className
+      )}
+    >
+      <svg aria-hidden="true" className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+        <path
+          d="M0 0 100 100M100 0 0 100"
+          vectorEffect="non-scaling-stroke"
+          className={dark ? 'stroke-white/25' : 'stroke-line-strong/60'}
+          strokeWidth="1"
+        />
+      </svg>
+      <span
+        className={cx(
+          'absolute rounded-sm px-2 py-0.5 text-label',
+          dark ? 'right-4 bottom-4 border border-white/40 text-white/75' : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border border-line-strong bg-surface text-ink-muted'
+        )}
+      >
+        Photo: {label}
+      </span>
+    </div>
+  )
+}
 
 /** A grey placeholder line standing in for text. */
 function Bar({ className }) {
@@ -185,22 +226,16 @@ const FEATURES = [
   { icon: 'dollar', title: 'Payments & documents', body: 'Balances due and contracts waiting for a signature.', href: '/events/evt-1001/payments' }
 ]
 
-// Photos: Unsplash License. Manager by Carlos Gil (unsplash.com/photos/RVHYGbQt28k),
-// staff by Martin Baron (unsplash.com/photos/v-QxPxRhTQg).
 const AUDIENCE = [
   {
     title: 'Venue managers',
     body: 'See every wedding at a glance and stay ahead of the week.',
-    image: '/images/who-manager.jpg',
-    alt: 'A venue manager in a suit shaking hands with a client at the front desk',
-    position: 'object-center'
+    photo: 'a venue manager greeting a couple at the front desk'
   },
   {
     title: 'Event staff',
     body: 'Get one text with your shift, and answer yes or no.',
-    image: '/images/who-staff.jpg',
-    alt: 'A server in black offering a tray of food to a guest at an event',
-    position: 'object-center'
+    photo: 'a server offering a tray to a guest at a reception'
   }
 ]
 
@@ -224,18 +259,19 @@ export function Landing() {
       <header className="absolute inset-x-0 top-0 z-10 bg-black/30 backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center px-4 md:px-8">
           <span className="text-title font-light text-white">Vue</span>
-          <Button href="/dashboard" variant="onDark" className="ml-auto">
-            Open dashboard
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <PrototypeNotice />
+            <Button href={CTA.href} variant="onDark" className="ml-1 hidden sm:inline-flex">
+              {CTA.label}
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="flex-1">
       {/* Full-bleed photo; the dark wash keeps the white type readable. */}
-      <section
-        className="relative isolate bg-ink bg-cover bg-center"
-        style={{ backgroundImage: `url(${asset('/images/hero-wedding.jpg')})` }}
-      >
+      <section className="relative isolate bg-ink">
+        <PhotoStub dark label="a wedding reception, tables set with flowers" />
         <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/80 via-black/55 to-black/25" />
       <div className="mx-auto grid w-full max-w-6xl content-center gap-12 px-4 pt-30 pb-16 md:px-8 lg:min-h-dvh lg:grid-cols-[1fr_1.2fr] lg:items-center lg:pt-14">
         <div>
@@ -247,12 +283,12 @@ export function Landing() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button href="/up-next" variant="secondary" size="lg">
-              See what&apos;s up next
+            <Button href={CTA.href} variant="secondary" size="lg">
+              {CTA.label}
               <Icon name="arrowRight" size={16} />
             </Button>
             <Button href="/staffing" variant="onDark" size="lg">
-              Fill open positions
+              Fill open spots
             </Button>
           </div>
 
@@ -325,12 +361,7 @@ export function Landing() {
           <div className="grid gap-8 sm:grid-cols-2">
             {AUDIENCE.map((a) => (
               <figure key={a.title}>
-                <img
-                  src={asset(a.image)}
-                  alt={a.alt}
-                  loading="lazy"
-                  className={cx('aspect-[4/3] w-full rounded-md object-cover', a.position)}
-                />
+                <PhotoStub label={a.photo} className="aspect-[4/3] w-full" />
                 <figcaption className="mt-4">
                   <h3 className="text-heading font-medium">{a.title}</h3>
                   <p className="mt-1 text-body text-ink-muted">{a.body}</p>
@@ -343,10 +374,8 @@ export function Landing() {
 
       {/* ------------------------------ closing CTA ----------------------------- */}
       {/* Echoes the hero: same photo, heavier wash, one headline and two buttons. */}
-      <section
-        className="relative isolate bg-ink bg-cover bg-center"
-        style={{ backgroundImage: `url(${asset('/images/hero-wedding.jpg')})` }}
-      >
+      <section className="relative isolate bg-ink">
+        <PhotoStub dark label="the reception, same as the top of the page" />
         <div aria-hidden="true" className="absolute inset-0 -z-10 bg-black/70" />
         <div className="mx-auto w-full max-w-3xl px-4 py-24 text-center md:px-8">
           <h2 className="text-title font-light text-balance text-white sm:text-display">
@@ -356,12 +385,12 @@ export function Landing() {
             Your staff, your couples and your deadlines, all in one place.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button href="/dashboard" variant="secondary" size="lg">
-              Get started
+            <Button href={CTA.href} variant="secondary" size="lg">
+              {CTA.label}
               <Icon name="arrowRight" size={16} />
             </Button>
-            <Button href="/up-next" variant="onDark" size="lg">
-              See what&apos;s up next
+            <Button href="/staffing" variant="onDark" size="lg">
+              Fill open spots
             </Button>
           </div>
         </div>
@@ -370,7 +399,7 @@ export function Landing() {
 
       <footer className="border-t border-line">
         <p className="mx-auto w-full max-w-6xl px-4 py-4 text-small text-ink-muted md:px-8">
-          Early prototype. All data is simulated. Photos by Mathis Payet Descombes, Carlos Gil and Martin Baron on Unsplash.
+          Early prototype. All data is simulated. Photos are placeholders.
         </p>
       </footer>
     </div>

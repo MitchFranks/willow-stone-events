@@ -4,7 +4,18 @@
 
 import { useState } from 'react'
 import { useStore } from '@/lib/store'
-import { Avatar, Breadcrumbs, Button, Card, EmptyState, ListRow, PageHeader, StatusBadge } from '@/components/ui/primitives'
+import {
+  Avatar,
+  Breadcrumbs,
+  Button,
+  Card,
+  EmptyState,
+  FilterChip,
+  FilterGroup,
+  ListRow,
+  PageHeader,
+  StatusBadge
+} from '@/components/ui/primitives'
 
 const FILTERS = [
   { id: 'needs-reply', label: 'Needs reply' },
@@ -36,22 +47,14 @@ export default function InboxPage() {
         lead="Couples, vendors and staff."
       />
 
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        {FILTERS.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => setFilter(f.id)}
-            aria-pressed={filter === f.id}
-            className={
-              filter === f.id
-                ? 'rounded-md border border-accent bg-surface-sunken px-2.5 py-1 text-label font-medium text-accent'
-                : 'rounded-md border border-line bg-surface px-2.5 py-1 text-label text-ink hover:bg-surface-sunken'
-            }
-          >
-            {f.label} ({counts[f.id]})
-          </button>
-        ))}
+      <div className="mb-4">
+        <FilterGroup label="Show">
+          {FILTERS.map((f) => (
+            <FilterChip key={f.id} pressed={filter === f.id} onClick={() => setFilter(f.id)} count={counts[f.id]}>
+              {f.label}
+            </FilterChip>
+          ))}
+        </FilterGroup>
       </div>
 
       {filtered.length === 0 ? (
@@ -90,7 +93,7 @@ export default function InboxPage() {
                   </StatusBadge>
                 ) : (
                   <StatusBadge tone="info" size="sm">
-                    No action
+                    No reply needed
                   </StatusBadge>
                 )
               }

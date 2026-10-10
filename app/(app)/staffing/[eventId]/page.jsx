@@ -3,15 +3,16 @@
 // ---------------------------------------------------------------------------
 // Staffing Planner · Event crew (spec §B.2). The screen that does the whole
 // job: needs, people, replies, warnings and backups, inline. Ask, reply,
-// backfill, once per wedding.
+// backfill, once per wedding. When every spot is confirmed it says so at the
+// top, with anything still left to do spelled out.
 // ---------------------------------------------------------------------------
 
 import { Suspense, use, useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { pluralRole } from '@/lib/mock/staff'
-import { Alert, Breadcrumbs, Button, Card, EmptyState, Icon, PageHeader } from '@/components/ui/primitives'
+import { Alert, Breadcrumbs, Button, EmptyState, Icon, PageHeader, StatusBadge } from '@/components/ui/primitives'
+import { openSpots } from '@/components/ui/domain'
 import { SkeletonCards } from '@/components/staffing/Nav'
-import { Chip } from '@/components/staffing/StatusChip'
 import { BlockCard } from '@/components/staffing/RoleCard'
 import { TimeChart } from '@/components/staffing/TimeChart'
 import { AskPanel } from '@/components/staffing/AskPanel'
@@ -27,12 +28,27 @@ import {
   eventRoles,
   eventSummary,
   firstName,
-  fmtH,
+  fullyStaffed,
   rolesOf,
   stampLabel,
   weekdayOf
 } from '@/lib/staffing/derive'
 import { useStaffing2 } from '@/lib/staffing/store'
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
+const theName = (name) => (/^the /i.test(name) ? name : `The ${name}`)
+
+/** The first role, in time order, that still has spots nobody was asked for (else any unfilled role). */
+function firstOpenRole(base, st) {
+  const blocks = base.blocks.slice().sort((x, y) => x.start - y.start)
+  for (const pick of [(c) => c.toFind > 0, (c) => c.gap > 0]) {
+    for (const b of blocks) {
+      const role = rolesOf(b, st).find((r) => pick(coverage(base.id, b, r, st)))
+      if (role) return { blockId: b.id, role }
+    }
+  }
+  return null
+}
 
 function Crew({ eventId }) {
   const params = useSearchParams()
@@ -43,8 +59,9 @@ function Crew({ eventId }) {
   const [editing, setEditing] = useState(false)
   const [changing, setChanging] = useState(null)
   const [marking, setMarking] = useState(null)
-  const [highlight, setHighlight] = useState(null)
-  const deepLinked = useRef(false)
+  const [highlight, setHighlight] = useState(null) // a request id
+  const [spot, setSpot] = useState(null) // { blockId, role } from an Up Next link
+  const handledQuery = useRef(null)
 
   const closeAsk = useCallback(() => setAsk(null), [])
   const closeReview = useCallback(() => setReview(null), [])
@@ -62,20 +79,52 @@ function Crew({ eventId }) {
 
   const base = WORLD.eventMap[eventId]
   const summary = base && hydrated ? eventSummary(eventId, state) : null
+  const query = params.toString()
 
-  // Deep links from the events list: ?send=1 opens Send review, ?ask=1 the Ask panel.
+  // Deep links (Up Next, the events list). Handled once per distinct query, so
+  // following a second Up Next link while already here still works.
+  //   ?send=1                     opens Send review
+  //   ?block=..&role=..&ask=1     opens the Ask panel for that role and block
+  //   ?ask=1                      opens it for the first role with open spots
+  //   ?block=..&role=..           scrolls to that role in that block and outlines it
   useEffect(() => {
-    if (!hydrated || !base || deepLinked.current) return
-    deepLinked.current = true
+    if (!hydrated || !base || handledQuery.current === query) return
+    handledQuery.current = query
     const s = eventSummary(eventId, state)
+    const block = base.blocks.find((b) => b.id === params.get('block')) || null
+    const roleParam = params.get('role')
+    const role = roleParam && eventRoles(eventId, state).includes(roleParam) ? roleParam : null
     if (params.get('send')) {
       const ids = s.unsent.length ? s.unsent.map((r) => r.id) : s.overdueRs.map((r) => r.id)
       if (ids.length) setReview({ ids })
-    } else if (params.get('ask')) {
-      const role = Object.keys(s.findByRole)[0]
-      if (role) setAsk({ eventId, role, mode: 'ask' })
+      return
     }
-  }, [hydrated, base, eventId, params, state])
+    if (params.get('ask')) {
+      const target = role ? { blockId: block?.id, role } : firstOpenRole(base, state)
+      const targetBlock = target?.blockId ? blockById(target.blockId) : null
+      const stillOpen = target && (targetBlock ? coverage(eventId, targetBlock, target.role, state).gap > 0 : true)
+      if (stillOpen) {
+        const blockIds = targetBlock && rolesOf(targetBlock, state).includes(target.role) ? [targetBlock.id] : undefined
+        setAsk({ eventId, role: target.role, blockIds, mode: 'ask' })
+        return
+      }
+      // The spot was filled since the link was made: show it instead of asking.
+      if (target?.blockId) setSpot({ blockId: target.blockId, role: target.role })
+      return
+    }
+    if (block && role) setSpot({ blockId: block.id, role })
+    else if (block) document.getElementById(`block-${block.id}`)?.scrollIntoView({ block: 'start' })
+  }, [hydrated, base, eventId, params, query, state])
+
+  // The outline from a deep link is brief: it only says "this one".
+  useEffect(() => {
+    if (!spot && !highlight) return undefined
+    const t = setTimeout(() => {
+      setSpot(null)
+      setHighlight(null)
+    }, 4000)
+    return () => clearTimeout(t)
+  }, [spot, highlight])
 
   if (!base) {
     return (
@@ -104,9 +153,41 @@ function Crew({ eventId }) {
 
   const roles = eventRoles(eventId, state)
   const rs = Object.values(state.requests).filter((r) => r.eventId === eventId)
+  const unsentN = summary.unsent.length
+  const done = fullyStaffed(summary)
+  const showWarnings = () => {
+    setHighlight(null)
+    setTimeout(() => setHighlight(summary.toCheck[0].id), 0)
+  }
 
-  // ---- Notices (at most 3; priority order) ----
+  // ---- Notices: one Alert stack, at most 2, most important first ----
   const notices = []
+  if (done) {
+    // Done is done: leftovers are listed, but they never hide the success.
+    const left = []
+    if (unsentN) left.push(`send ${plural(unsentN, 'text', 'texts')} (button at the top)`)
+    if (summary.waiting) left.push(`${plural(summary.waiting, 'person is', 'people are')} still waiting for a reply; a yes now makes them a backup`)
+    if (summary.toCheck.length) left.push(`${plural(summary.toCheck.length, 'warning', 'warnings')} to look at, which don't change the staffing`)
+    notices.push({
+      key: 'done',
+      tone: 'done',
+      title: `${theName(ev.name)} is fully staffed.`,
+      text: left.length ? `Every spot has someone confirmed. Still to do here: ${left.join('; ')}.` : 'Every spot has someone confirmed. Nothing else to do here.',
+      action: (
+        <div className="flex flex-wrap gap-2">
+          {summary.toCheck.length > 0 && (
+            <Button size="sm" onClick={showWarnings}>
+              Show warnings
+            </Button>
+          )}
+          <Button size="sm" variant="primary" href="/up-next">
+            Back to Up Next
+            <Icon name="arrowRight" size={13} />
+          </Button>
+        </div>
+      )
+    })
+  }
   const dropped = rs
     .filter((r) => r.droppedOut)
     .filter((r) => r.blockIds.some((b) => blockById(b) && coverage(eventId, blockById(b), r.role, state).toFind > 0))
@@ -116,15 +197,11 @@ function Crew({ eventId }) {
       .filter((b) => blockById(b))
       .map((b) => ({ b: blockById(b), n: coverage(eventId, blockById(b), dropped.role, state).toFind }))
       .filter((x) => x.n > 0)
-    const same = gaps.every((g) => g.n === gaps[0].n)
-    const names = gaps.map((g) => g.b.name).join(' and ')
-    const what = same
-      ? `${names} ${gaps.length > 1 ? 'each need' : 'needs'} ${gaps[0].n} more ${pluralRole(dropped.role, gaps[0].n)}.`
-      : gaps.map((g) => `${g.b.name} needs ${g.n} more`).join(', ') + ` ${pluralRole(dropped.role, 2)}.`
+    const what = gaps.map((g) => `${g.b.name} has ${openSpots(g.n)}`).join(', ') + ` for ${pluralRole(dropped.role, 2)}.`
     const why = [dropped.reason, dropped.hoursBefore != null ? `told you ${dropped.hoursBefore} hours before call time` : null].filter(Boolean).join(', ')
     notices.push({
       key: 'drop',
-      tone: 'warn',
+      tone: 'urgent',
       text: `${firstName(dropped.staffId)} can't make it anymore${why ? ` (${why})` : ''}. ${what}`,
       action: (
         <Button
@@ -132,29 +209,7 @@ function Crew({ eventId }) {
           variant="primary"
           onClick={() => setAsk({ eventId, role: dropped.role, blockIds: gaps.map((g) => g.b.id), mode: 'backups', dropped })}
         >
-          Ask backups
-        </Button>
-      )
-    })
-  }
-  if (summary.toCheck.length) {
-    const n = summary.toCheck.length
-    const allSeed = summary.toCheck.every((r) => r.source === 'seed')
-    notices.push({
-      key: 'check',
-      tone: 'info',
-      text: allSeed
-        ? `${n} ${n === 1 ? 'person is' : 'people are'} scheduled outside their usual hours.`
-        : `${n} ${n === 1 ? 'person has' : 'people have'} something to check.`,
-      action: (
-        <Button
-          size="sm"
-          onClick={() => {
-            setHighlight(null)
-            setTimeout(() => setHighlight(summary.toCheck[0].id), 0)
-          }}
-        >
-          Show them
+          Find a replacement
         </Button>
       )
     })
@@ -164,11 +219,24 @@ function Crew({ eventId }) {
     const more = summary.overdueRs.length - 1
     notices.push({
       key: 'reply',
-      tone: 'info',
-      text: `${firstName(r.staffId)} hasn't replied since ${weekdayOf(r.sentAt)}.${more > 0 ? ` ${more} more waiting past their reply-by time.` : ''}`,
+      tone: 'warn',
+      text: `${firstName(r.staffId)} hasn't replied since ${weekdayOf(r.sentAt)}.${more > 0 ? ` ${more} more ${more === 1 ? 'is' : 'are'} past their reply-by time.` : ''}`,
       action: (
         <Button size="sm" onClick={() => setReview({ ids: summary.overdueRs.map((x) => x.id) })}>
           Remind
+        </Button>
+      )
+    })
+  }
+  if (!done && summary.toCheck.length) {
+    const n = summary.toCheck.length
+    notices.push({
+      key: 'check',
+      tone: 'info',
+      text: `${plural(n, 'person has', 'people have')} a warning about their day, like working outside their usual hours. It doesn't stop the event being fully staffed.`,
+      action: (
+        <Button size="sm" onClick={showWarnings}>
+          Show them
         </Button>
       )
     })
@@ -178,7 +246,7 @@ function Crew({ eventId }) {
     ask: (role, blockIds) => setAsk({ eventId, role, blockIds, mode: 'ask' }),
     remind: (r) => setReview({ ids: [r.id] }),
     changeTimes: (r) => setChanging(r.id),
-    record: (r, yes) => store.recordReply(r.id, yes),
+    simulate: (r, yes) => store.recordReply(r.id, yes),
     markOk: (r, hard) => (hard ? setMarking(r.id) : store.markOk(r.id, null)),
     phone: (r) => store.openPhone(r.staffId),
     remove: (r) => store.remove(r.id),
@@ -187,9 +255,8 @@ function Crew({ eventId }) {
   }
   const noticePrimary = notices.some((n) => n.key === 'drop')
   const blocksInOrder = base.blocks.slice().sort((x, y) => x.start - y.start)
+  // The first open spot gets the one filled "Ask people" button.
   let firstFindBlock = null
-  // The guide points at the first open spot, or at the first Ask people if everything is filled.
-  let guideAsk = null
   for (const b of blocksInOrder) {
     const role = rolesOf(b, state).find((r) => coverage(eventId, b, r, state).toFind > 0)
     if (role) {
@@ -197,71 +264,45 @@ function Crew({ eventId }) {
       break
     }
   }
-  if (firstFindBlock) guideAsk = firstFindBlock
-  else {
-    const b = blocksInOrder.find((x) => rolesOf(x, state).length)
-    if (b) guideAsk = { id: b.id, role: rolesOf(b, state)[0] }
-  }
-  const unsentN = summary.unsent.length
   const activity = state.activity.filter((a) => a.eventId === eventId).slice(0, 10)
-  const allSet = summary.filled === summary.spots && !summary.toFind && !summary.waiting && !unsentN && !summary.toCheck.length
 
   return (
     <div>
       {crumbs}
       <PageHeader
         title={ev.name}
-        lead={`${ev.couple} · ${ev.dateShort} · ${daysOutText(ev)} · ${ev.expectedGuests} guests${ev.guaranteedCount ? ` (guarantee ${ev.guaranteedCount})` : ' (no guarantee yet)'}`}
+        lead={`${ev.couple} · ${ev.dateShort} · ${daysOutText(ev)} · ${ev.expectedGuests} guests${ev.guaranteedCount ? ` (guarantee ${ev.guaranteedCount})` : ''}`}
         actions={
           <>
             {unsentN > 0 && (
               <Button variant="primary" onClick={() => setReview({ ids: summary.unsent.map((r) => r.id) })}>
                 <Icon name="send" size={13} />
-                Send {unsentN} text{unsentN === 1 ? '' : 's'}
+                Send {plural(unsentN, 'text', 'texts')}
               </Button>
             )}
-            <Button onClick={() => setEditing(true)}>Edit needs</Button>
+            <Button onClick={() => setEditing(true)}>Change how many people you need</Button>
           </>
         }
       >
+        {/* At most three: filled, waiting, open spots nobody was asked for. */}
         <div className="mt-4 flex flex-wrap gap-2">
-          {allSet || summary.filled === summary.spots ? (
-            <Chip tone="done" icon="check" title="Only people who said yes count as filled">
-              All {summary.spots} spots filled
-            </Chip>
+          {done ? (
+            <StatusBadge tone="done">Fully staffed</StatusBadge>
           ) : (
-            <Chip tone="neutral" icon="check" title="Filled: people who said yes. Only Confirmed counts.">
+            <StatusBadge tone="info">
               {summary.filled} of {summary.spots} spots filled
-            </Chip>
+            </StatusBadge>
           )}
-          {summary.waiting > 0 && (
-            <Chip tone="pending" icon="clock" title="Waiting: asked, no reply yet">
-              {summary.waiting} waiting
-            </Chip>
-          )}
-          {summary.toFind > 0 && (
-            <Chip tone="warn" icon="plus" title="To find: open spots nobody has been asked for yet">
-              {summary.toFind} to find
-            </Chip>
-          )}
-          {summary.toCheck.length > 0 && (
-            <Chip tone="warn" icon="alert" title="To check: people with something to look at, like times outside their usual hours">
-              {summary.toCheck.length} to check
-            </Chip>
-          )}
-          {unsentN > 0 && (
-            <Chip tone="empty" icon="dash" title="Not sent: saved or changed, and the text has not gone out">
-              {unsentN} not sent
-            </Chip>
-          )}
+          {summary.waiting > 0 && <StatusBadge tone="pending">{summary.waiting} waiting for a reply</StatusBadge>}
+          {summary.toFind > 0 && <StatusBadge tone="warn">{openSpots(summary.toFind)} nobody was asked for</StatusBadge>}
         </div>
       </PageHeader>
 
       {notices.length > 0 && (
-        <div className="mb-5 space-y-2">
-          {notices.slice(0, 3).map((n) => (
-            <Alert key={n.key} tone={n.tone} action={n.action}>
-              <span className="text-small">{n.text}</span>
+        <div className="mb-6 space-y-2">
+          {notices.slice(0, 2).map((n) => (
+            <Alert key={n.key} tone={n.tone} title={n.title} action={n.action}>
+              {n.text}
             </Alert>
           ))}
         </div>
@@ -274,13 +315,12 @@ function Crew({ eventId }) {
           icon="users"
           action={
             <Button variant="primary" onClick={() => setEditing(true)}>
-              Edit needs
+              Change how many people you need
             </Button>
           }
         />
       ) : (
         <>
-          <TimeChart eventId={eventId} blocks={blocksInOrder} roles={roles} st={state} />
           <div className="space-y-4">
             {blocksInOrder.map((b) => (
               <BlockCard
@@ -289,17 +329,25 @@ function Crew({ eventId }) {
                 block={b}
                 st={state}
                 primaryRole={!noticePrimary && b.id === firstFindBlock?.id ? firstFindBlock.role : null}
-                guideRole={b.id === guideAsk?.id ? guideAsk.role : null}
+                guideRole={b.id === firstFindBlock?.id ? firstFindBlock.role : null}
+                highlightRole={spot?.blockId === b.id ? spot.role : null}
                 highlightId={highlight}
                 act={act}
               />
             ))}
           </div>
+
+          <details className="surface-card mt-6 px-4 py-3 sm:px-6">
+            <summary className="cursor-pointer text-small font-medium text-ink">The day at a glance (chart)</summary>
+            <div className="mt-3">
+              <TimeChart eventId={eventId} blocks={blocksInOrder} roles={roles} st={state} />
+            </div>
+          </details>
         </>
       )}
 
-      <details className="surface-card mt-5 px-5 py-3.5">
-        <summary className="cursor-pointer text-body font-medium text-ink">Replies and changes ({activity.length})</summary>
+      <details className="surface-card mt-4 px-4 py-3 sm:px-6">
+        <summary className="cursor-pointer text-small font-medium text-ink">Replies and changes ({activity.length})</summary>
         {activity.length ? (
           <ul className="mt-2 space-y-1.5 text-small text-ink">
             {activity.map((a) => (

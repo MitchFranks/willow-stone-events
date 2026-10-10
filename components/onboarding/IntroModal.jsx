@@ -91,8 +91,8 @@ export function IntroModal({ onClose }) {
           </div>
 
           <p className="text-small text-ink-muted">
-            There is no set route. Use the menu to look around however you like, and bring this back any time with
-            &ldquo;Your goal&rdquo; at the top of the screen.
+            There is no set route: explore however you like. Bring this back any time with &ldquo;Your goal&rdquo; at
+            the top of the screen.
           </p>
         </div>
 

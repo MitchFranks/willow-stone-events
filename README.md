@@ -47,285 +47,296 @@ to that: the system goes looking for problems so the manager does not have to.
 
 ## Core Design Features
 
-### 1. Up Next dashboard
+### 1. Up Next
 
 The system proactively surfaces anything that requires action rather than making the manager hunt
-for it. It covers open positions, declined assignments, unanswered couple and vendor messages, approaching
-vendor deadlines, overdue guest counts, unpaid balances, unsigned documents and overdue tasks.
+for it: open staff spots, people still to text, unanswered couple messages, tasks due, documents
+awaiting signature and payments due.
 
-Critically, an attention item does not just say something is wrong. Every item states:
+An Up Next item does not just say something is wrong. Every item states:
 
 | | |
 |---|---|
-| **What happened** | "Jake Pearson declined the ceremony assignment." |
-| **Which event** | Johnson Wedding (a link straight to it) |
-| **Why it matters** | "Johnson Wedding is 2 days out. Without a filled position this timeline block runs understaffed." |
-| **What you can do** | A primary action button — "Find replacement" |
+| **What happened** | "1 of 2 Event Staff confirmed." |
+| **Which event** | Johnson Wedding · Ceremony · 3:00 PM–5:00 PM |
+| **Why it matters** | "2 days out. Until it is filled, this block runs short-staffed." |
+| **What you can do** | One button that goes straight to the fix: "Fill spot" |
 
-**Nothing in this list is hard-coded.** Attention items are *derived* from the live state of
-shifts, tasks, messages and documents (`lib/store.jsx`). Resolve the underlying thing and the item
-disappears on its own.
+**Nothing in this list is hard-coded.** Items are *derived* from the live state of the Staffing
+Planner, tasks, messages, documents and payments (`lib/store.jsx`). Resolve the underlying thing and
+the item disappears on its own. Staffing items can't be hidden, because hiding them would look like
+fixing them; other items can be hidden, with Undo, and brought back from Up Next or Settings.
 
-### 2. Staff availability + smart scheduling
+### 2. Staffing Planner
 
-Staff submit the hours they can work. The manager sees that availability, builds a schedule by
-timeline block, publishes it, and staff accept or decline. Any open position flows straight
-back into Up Next.
-
-The scheduling is "smart" in a deliberately modest, explainable way. When a position needs filling,
-the system proposes people by checking three things:
-
-1. Do they hold the required role?
-2. Does their stated availability actually cover this window?
-3. Are they already booked on an overlapping timeline block *on that date*?
-
-People who fail those checks are still listed, with the reason shown, and can be assigned anyway —
-the manager is never blocked, just informed.
+The manager sees each event by timeline block (Setup, Ceremony, Reception, Teardown) and role, asks
+people by text, and tracks who said yes. Asking is "smart" in a modest, explainable way: the Ask
+panel lists who is a good fit, who has a heads-up (outside their usual hours, another shift that
+day) and who can't be asked, with the reason shown. The manager is never blocked, just informed.
 
 ### The loop that connects them
 
 ```
-staff availability
-   → manager builds / reviews the schedule
-   → schedule published
-   → staff accept or decline
-   → a decline opens a COVERAGE GAP
-   → the open position appears in NEEDS ATTENTION
-   → manager finds a replacement
-   → open position closes, attention item resolves, dashboard updates
+open spot on the Johnson Wedding
+   → appears in Up Next ("Ceremony: 1 open spot for Event Staff")
+   → "Fill spot" opens the Ask panel for that role and block
+   → manager asks someone and sends the text
+   → Up Next now says "waiting on 1 reply" (asked is not covered)
+   → the staff member says yes (simulated in the prototype)
+   → the spot fills, the Up Next item resolves, every count updates
+   → when every spot is filled: "The Johnson Wedding is fully staffed."
 ```
 
-This chain is implemented, not mocked per-screen. It was verified in a headless browser:
-declining raises the attention count, assigning a replacement lowers it, and the event's badge
-flips from "Short 1 staff" to "Fully staffed".
+This chain is implemented, not mocked per-screen. It was verified in a headless browser: following
+each "Fill spot" item, asking, sending and simulating a yes clears all five Johnson Wedding
+staffing items, shows the fully-staffed message, and updates the dashboard and sidebar counts.
 
 ---
 
 ## Why These Features Are Prioritized
 
 Discovery ranked these two highest, and they are causally linked rather than merely adjacent.
-Scheduling is where last-minute change does the most damage — a single decline two days before a
-wedding affects the timeline block, the event and the manager's confidence in the whole booking. A
-"needs attention" dashboard with nothing feeding it is just a to-do list; staffing without a
-feedback loop is just a rota. Together they produce the actual outcome: the manager finds out
-about the problem without looking for it, and can fix it in two clicks from wherever they happen
-to be.
+Scheduling is where last-minute change does the most damage: a single "can't make it" two days
+before a wedding affects the timeline block, the event and the manager's confidence in the whole
+booking. An Up Next list with nothing feeding it is just a to-do list; staffing without a feedback
+loop is just a rota. Together they produce the actual outcome: the manager finds out about the
+problem without looking for it, and can fix it from wherever they happen to be.
 
-Everything else in the prototype — vendors, payments, documents, change history — is supporting
-context that exists so attention items have somewhere real to point.
+Everything else in the prototype (vendors, payments, documents, change history) is supporting
+context that exists so Up Next items have somewhere real to point.
 
 ---
 
 ## Low-Fidelity Prototype Notice
 
-This prototype is deliberately **not** visually polished. It uses a greyscale neutral ramp, a
-single accent colour, system sans-serif type, 1px borders, minimal corner radius, no gradients, no
-shadows, no photography and almost no animation.
+This prototype is deliberately early-stage. It uses cool neutrals, one accent colour and three
+status colours that always come with an icon and a word, and **no photography**: wherever a photo
+will go (the welcome screen's hero, closing section and "Who it's for" cards) there is a labelled
+placeholder stub (a box with a cross and a note saying what the photo should show).
 
-Users are told this in three places:
+Users are told this in four places:
 
-- A blocking modal on first load of any screen (`components/onboarding/IntroModal.jsx`) that says, in plain
-  English, that this is an early prototype with made-up data, and gives the tester their goal.
-- A persistent **"Early prototype"** badge and a **"Your goal"** button in the top bar (the button reopens the modal).
+- A blocking modal on first load of any screen (`components/onboarding/IntroModal.jsx`) that says,
+  in plain English, that this is an early, low-fidelity prototype with made-up data, and gives the
+  tester their goal.
+- An **"Early prototype"** pill and a **"Your goal"** button at the top of every screen, including
+  the welcome screen (`components/onboarding/PrototypeNotice.jsx`). The button reopens the modal.
 - A note in the sidebar: *"Simulated data. Nothing here is saved to a real system."*
+- Anything that only exists to make the prototype testable is labelled as such: "Staff phone
+  (prototype)", "Prototype only: answer for staff", "Design library (for reviewers)".
 
-There are no tours or coach popovers. The modal can be closed with either button, the close button or Esc, and the
-app is then fully free-form.
+There are no tours or coach popovers. The modal can be closed with either button, the close button
+or Esc, and the app is then fully free-form.
 
 ## Prototype Goal
 
 Testers are given this goal in the opening modal:
 
-> **The Johnson Wedding is this Saturday and it is short on staff. Find out what needs attention and make sure
-> the wedding is fully staffed.**
+> **You are Dana, the venue manager. The Johnson Wedding is this Saturday and it is short on staff.
+> Find out what needs attention and make sure the wedding is fully staffed.**
 
-The modal does **not** say which buttons to press. The seeded scenario supporting it:
+The modal does **not** say which buttons to press. There are several routes to the fix:
 
-- **Johnson Wedding** — Saturday 19 September 2026, 150 guests, 4:00 PM ceremony
-- Timeline blocks: Setup 9:00–3:00 (2 grounds) · Ceremony 3:00–5:00 (1 venue manager + 2 event staff) ·
-  Reception 5:00–9:00 (1 venue manager + 2 event staff + 1 bartender + 1 server) · Teardown 9:00–11:00
-- **The Johnson Wedding is short 5 positions** across setup, ceremony, reception and teardown
+- Welcome screen → **Open Up Next** → "Fill spot" on any Johnson Wedding item
+- Dashboard → the Up Next list, the "Open spots" counter, or the Staffing status list
+- Sidebar → **Staffing Planner** → Johnson Wedding
+- Events → Johnson Wedding → the **Staffing planner** tab or the "5 open spots" badge
+- Staff Directory → a person → record their reply on a waiting request
+
+Because staff can't log in, the tester answers for them: every waiting person has a dashed
+**"Prototype only: answer for …"** box with *Simulate: says yes* / *Simulate: can't make it*, and
+there is a full **Staff phone (prototype)** view.
+
+The seeded scenario (two events, set in `lib/mock/scope.js`; "today" is Thursday 17 September 2026):
+
+- **Johnson Wedding** — Saturday 19 September 2026, 150 guests, 4:00 PM ceremony, **5 open spots**
+  across Setup, Ceremony, Reception and Teardown
 - An unanswered couple request to move decorating to 9:00 AM
-- A catering guest-count deadline due today
+- A catering guest-count guarantee due today (entered on the Tasks tab)
+- A day-of timeline awaiting your signature
 - A final balance of $4,250 due tomorrow
-- An unsigned day-of timeline
+- **Shah–Patel Rehearsal Dinner** — Thursday 24 September, a second, less urgent event, so Up Next
+  has something to prioritise against
 
 ---
 
 ## Screen Map
 
-**30 distinct routes.** Every one has a job; none are filler.
+Every route has a job; none are filler.
 
-### Overview
-| # | Route | Screen |
-|---|---|---|
-| 1 | `/` | Dashboard (entry) |
-| 2 | `/up-next` | Up Next Center |
-| 3 | `/calendar` | Calendar |
-| 4 | `/events` | Events |
+### Entry and overview
+| Route | Screen |
+|---|---|
+| `/` | Welcome (entry): what Vue does, one way in ("Open Up Next") |
+| `/up-next` | Up Next (filterable by kind and event, e.g. `/up-next?kind=task`) |
+| `/dashboard` | Dashboard: Up Next first, then counts, events, staffing status, recent activity |
+| `/calendar` | Calendar, month by month |
+| `/events` | Events |
 
-### Event management
-| # | Route | Screen |
-|---|---|---|
-| 5 | `/events/[id]` | Event Overview |
-| 6 | `/events/[id]/timeline` | Event Timeline |
-| 7 | `/events/[id]/tasks` | Event Tasks |
-| 9 | `/events/[id]/vendors` | Event Vendors |
-| 10 | `/events/[id]/payments` | Event Payments |
-| 11 | `/events/[id]/messages` | Event Messages |
-| 12 | `/events/[id]/documents` | Event Documents |
-| 13 | `/events/[id]/activity` | Event Activity Log |
-| 14 | `/events/new` | Create Event |
+### Event workspace
+| Route | Screen |
+|---|---|
+| `/events/[id]` | Event Up Next |
+| `/events/[id]/timeline` | Run of show (day view editor) |
+| `/events/[id]/tasks` | Tasks, including the guest-count guarantee |
+| `/events/[id]/vendors` | Vendors |
+| `/events/[id]/payments` | Payments (record a payment) |
+| `/events/[id]/messages` | Messages |
+| `/events/[id]/documents` | Documents (sign) |
+| `/events/[id]/activity` | Activity log |
+| `/events/new` | Create event |
 
 ### Staffing
-| # | Route | Screen |
-|---|---|---|
-| 15 | `/staff` | Staff Directory |
-| 16 | `/staff/[id]` | Staff Member Detail |
-| 17 | `/staffing` | Staffing Planner: Events |
-| 18 | `/staffing/[eventId]` | Staffing Planner: Event crew |
-| 19 | `/staffing/team` | Staffing Planner: Team |
-| 20 | `/staffing/phone` | Staffing Planner: Staff phone |
+| Route | Screen |
+|---|---|
+| `/staffing` | Staffing Planner: events |
+| `/staffing/[eventId]` | Staffing Planner: one event's spots and people (deep-linkable to a block and role) |
+| `/staffing/team` | Team: availability and away dates, for planning |
+| `/staffing/phone` | Staff phone (prototype simulator) |
+| `/staff` | Staff directory: people and contact details |
+| `/staff/[id]` | Staff member: their requests and replies |
 
-### Communication & people
-| # | Route | Screen |
-|---|---|---|
-| 25 | `/messages` | Message Inbox |
-| 26 | `/messages/[id]` | Message Detail / Reply |
-| 27 | `/couples` | Couples |
-| 28 | `/couples/[id]` | Couple Detail |
-| 29 | `/vendors` | Vendors |
-| 30 | `/vendors/[id]` | Vendor Detail |
+### Communication and people
+| Route | Screen |
+|---|---|
+| `/messages`, `/messages/[id]` | Inbox and reply |
+| `/couples`, `/couples/[id]` | Couples |
+| `/vendors`, `/vendors/[id]` | Vendors |
 
-Dynamic routes are statically generated for every seeded record — the seeded pages in total, so any
-of them can be deep-linked.
+### Account
+| Route | Screen |
+|---|---|
+| `/account` | Account (read-only) |
+| `/settings` | Settings: show my goal, show hidden Up Next items, reset |
+| `/style-guide` | Design library (for reviewers) |
+
+Dynamic routes are statically generated for every seeded record, so any of them can be deep-linked.
 
 ---
 
 ## Usability Principles Implemented
 
-**Guide attention.** The dashboard's first substantive block is the attention queue. Urgent items
-get a 4px red left rule, a heavier title and the only filled button in the list; "due soon" items
-are quieter and render in compact form. Of the four metric tiles, only the ones that imply work are
-tinted.
+**Capability first on entry.** The welcome screen's headline is the product promise ("Know what
+needs fixing before the wedding."), followed by one primary action worded the same in the header,
+hero and closing section. The other areas are listed underneath as one consistent set of links.
+Inside the app, the dashboard opens on Up Next before any counter.
 
-**Gestalt — proximity.** The four facts a manager is constantly asked for (date, schedule, guests,
-spaces) sit in one bordered strip directly under the event name and stay there across all nine
-event tabs (`components/EventHeader.jsx`).
+**Guide attention.** Up Next is split into **Do first** and **Coming up**. Only the first item on a
+screen has the filled button, so one action leads. Counters stay neutral unless they describe work.
 
-**Gestalt — similarity.** One component per job, used everywhere: every status is a `StatusBadge`,
-every list row is a `ListRow`, every grouping is a `Card`. Five vendors looking identical is what
-makes the sixth, flagged amber, obvious.
+**Gestalt: proximity and common region.** The four facts a manager is constantly asked for (date,
+schedule, guests, spaces) sit in one strip under the event name on every event tab. Every group of
+related content sits inside one bordered `Card`; the tab strip and its panel read as one object.
 
-**Common region.** Every group of related content sits inside a visible bordered `Card`. The tab
-strip and its panel form a single region so "Payments" and its contents read as one object.
+**Gestalt: similarity.** One component per job, used everywhere: every status is a `StatusBadge`,
+every list row is a `ListRow`, every filter is a `FilterChip`, every overlay is a `Modal`.
 
-**Hierarchy.** Four type sizes and three weights do all the work. The dashboard `h1` is the product
-promise; metric tiles are secondary; the "how this list is built" explainer is smallest.
+**Signifiers.** Buttons are bordered or filled at rest, not only on hover. Clickable rows carry a
+chevron. Tabs show an underline when active. A pressed filter is filled ink. Focus is a visible
+2px outline.
 
-**Signifiers / affordances.** Buttons are bordered and filled at rest, not on hover. Clickable rows
-carry a trailing chevron. Tabs show an underline plus bold weight when active. Focus states are a
-2px accent outline, always visible. Nothing relies on hover alone.
+**Conventions.** Left sidebar, top bar, breadcrumbs, tabs, a month calendar with previous/next, and
+dialogs with Cancel on the left and the action on the right. Each navigation destination has its own
+icon, and status icons (alert, clock, check) are never used as navigation icons.
 
-**Conventions.** Left sidebar, top bar, breadcrumbs, tabs, checkboxes, a modal with Cancel on the
-left and the primary action on the right — all standard admin-tool patterns.
+**One vocabulary.** An unfilled role is always an "open spot" ("3 open spots"); a covered event is
+"Fully staffed"; a staff request is Not sent, Waiting, Confirmed or Can't make it. "Up Next" is
+always written the same way.
 
-**Feedback.** Every meaningful action fires a toast (`ToastHost`, `role="status"`): "Marisol Vega
-assigned to Johnson Wedding — Ceremony. Gap closed.", "Schedule published to 8 people.",
-"Completed 'Send final guest count'.", "Reply sent to Marla Perez."
+**Feedback.** Every meaningful action shows a toast, most with Undo: "Recorded the final balance of
+$4,250.", "Sent a guarantee of 142 guests to catering.", "Day-of timeline v2 is signed." Finishing
+the goal shows "The Johnson Wedding is fully staffed."
 
-**Visibility of system status.** Coverage is shown as "12 of 13 roles confirmed" with a bar;
-schedules are labelled Draft or Published; assignments read Accepted / Pending / Declined; the sidebar
-carries live counts for attention, open positions and unread messages.
+**Visibility of system status.** "1 of 4 spots filled", Waiting vs Confirmed, "waiting on 1 reply"
+in Up Next, live counts in the sidebar, and the guarantee shown in the event header once it is sent.
 
-**Error prevention.** Declining an assignment, assigning someone with a scheduling clash, removing an
-assignment and publishing a schedule all route through a confirmation dialog that states the
-consequence ("This will create an open position for Ceremony and add an item to Up Next").
+**Error prevention and recovery.** Recording a payment, signing a document, recording a "can't make
+it", resetting the run of show and resetting the prototype all ask first and say what will happen.
+Hiding an Up Next item, removing someone from an event, simulated replies and run-of-show edits can
+be undone. Forms show inline errors (red, with an icon) instead of silently fixing input.
 
-**Recognition over recall.** The message reply screen shows the event context beside the message —
-current setup window, earliest venue access, whether anything is booked the night before — so the
-manager can answer without going to look it up.
+**Recognition over recall.** The reply screen shows the event context beside the message. The Ask
+panel shows each person's usual hours and conflicts before you ask them.
 
-**Consistency.** Status tone → colour → icon → label is one mapping defined once in
-`primitives.jsx` and used by every screen.
+**Progressive disclosure.** The event workspace is tabs rather than one long page; the staffing
+chart and change history are behind disclosures; warnings that don't block staffing are behind
+"Show warnings".
 
-**Progressive disclosure.** The event workspace is nine tabs rather than one long page. The
-attention list has kind and event filters. Availability grids expand per person on request.
+**User control.** Every dialog has Cancel and closes on Escape or backdrop click. Every screen has
+breadcrumbs. "Your goal" is always one click away. Reset is in Settings.
 
-**User control.** Every dialog has Cancel and closes on Escape or backdrop click. Every detail
-screen has a back route. Breadcrumbs appear on every non-dashboard screen. "Reset prototype data"
-restores the seeded scenario at any time.
-
-**Accessibility.** Semantic `<table>`/`<ol>`/`<dl>` markup, `<button>` for actions and `<a>` for
-navigation, labels bound to every form control, `aria-current` on active nav, `aria-expanded` on
-disclosures, `aria-pressed` on filter toggles, `role="status"` on toasts, `sr-only` text on
-icon-only controls, and a `prefers-reduced-motion` guard.
+**Accessibility.** Semantic tables and lists, `<button>` for actions and `<a>` for navigation, labels
+bound to every form control, `aria-invalid` on fields with errors, `aria-current` on active nav,
+`aria-pressed` on filters, `role="status"` on toasts, focus trapped in dialogs and returned after.
 
 ---
 
 ## Up Next Design
 
-The old "Needs Attention" framing was replaced with **Up Next**, so the product signals priority
-without creating chronic stress. Priority is shown by order and wording, not alarm:
+"Up Next" signals priority without creating chronic stress. Priority is shown by order and wording,
+not alarm:
 
-- The list is split into **Do first** and **Coming up**. The counter in the top bar, sidebar and
-  dashboard shows only what to do first ("2 to do first"), never a raw total of everything open.
-- Do-first items carry a quiet `status-now` chip ("Do first"); coming-up items a `status-soon` chip
-  ("Coming up"). Only the first item has a filled button, and counts stay neutral, so nothing on the
-  list reads as an error screen.
-- Copy is calm and specific: "Ceremony needs 1 more Event Staff", "Reply to Marla Perez", "Document is
-  ready for your signature". Shortages read "Needs 1 more", not "Short 1".
+- The list is split into **Do first** and **Coming up**. The sidebar count shows only what to do
+  first ("2 to do first"), never a raw total.
+- Copy is calm and specific: "Ceremony: 1 open spot for Event Staff", "Reply to Emily Johnson",
+  "Day-of timeline v2 is ready for your signature".
+- A spot that has been asked for but not answered moves to Coming up as "waiting on 1 reply", so
+  the Do first list only holds things the manager can act on.
 - When the list is empty the product says "All caught up".
 
-The status tones themselves are unchanged and defined once:
+The status tones are defined once, in `components/ui/primitives.jsx`:
 
 | Tone | Meaning | Colour | Glyph |
 |---|---|---|---|
-| `urgent` | Do first / act today (e.g. a declined assignment) | `status-now` (vermilion) | alert |
+| `urgent` | Do first / act today | `status-now` (vermilion) | alert |
 | `warn` | Coming up this week | `status-soon` (ochre) | clock |
-| `pending` | Awaiting a reply | neutral | clock |
-| `done` | Confirmed / complete | `status-clear` (slate blue) | tick |
-| `info` | Informational | neutral | i |
+| `pending` | Waiting on a reply | neutral | clock |
+| `done` | Confirmed / complete | `status-clear` (slate blue) | check |
+| `declined` | Can't make it | `status-now` | x |
+| `info` / `empty` | Informational / nothing yet | neutral | i / dash |
 
-The full visual system (tokens for light and dark, type scale, components and rules) is in
-[`docs/STYLE-GUIDE.md`](docs/STYLE-GUIDE.md) and live at `/style-guide`.
-
-**Colour is never used alone.** `StatusBadge` always renders colour **plus** an icon glyph **plus**
-a text label, so the meaning survives greyscale printing and colour-blindness.
+**Colour is never used alone.** `StatusBadge` always renders colour **plus** an icon **plus** a word.
 
 ---
 
 ## Event Types
 
-Vue is built for weddings. Seeded events are three weddings, a rehearsal dinner and an engagement
-party. `/events/new` offers six types (Wedding, Rehearsal Dinner, Engagement Party, Bridal Shower,
-Welcome Party, Farewell Brunch) and changes its optional fields with the selection. The underlying
-structure (timeline blocks, staffing, tasks, payments) is shared.
+Vue is built for weddings. `/events/new` offers six types (Wedding, Rehearsal Dinner, Engagement
+Party, Bridal Shower, Welcome Party, Farewell Brunch) and changes its optional fields with the
+selection. The underlying structure (timeline blocks, staffing, tasks, payments) is shared.
 
 ---
 
 ## Design Library / Component Reuse
 
-Two files hold the entire visual system. No screen re-implements a border, a status colour or a
-button.
+Two files hold the visual system, and every screen is assembled from them. The full rules are in
+[`docs/STYLE-GUIDE.md`](docs/STYLE-GUIDE.md), and a live version is at `/style-guide`.
 
 **`components/ui/primitives.jsx`**
-`Icon` · `Button` (4 variants × 3 sizes) · `StatusBadge` (7 tones) · `Card` · `PageHeader` ·
-`Breadcrumbs` · `Tabs` · `EmptyState` · `Alert` · `ListRow` · `Field` · `Avatar` · `TextInput` ·
-`Select` · `Textarea` · `SectionNote` · `MetricTile`
+`Icon` · `Button` (4 variants × 3 sizes) · `StatusBadge` · `Card` · `PageHeader` · `Breadcrumbs` ·
+`Tabs` · `Count` · `FilterChip` · `FilterGroup` · `EmptyState` · `Alert` · `ListRow` · `Field` ·
+`Avatar` · `TextInput` / `Select` / `Textarea` (with hint and error states) · `SectionNote` ·
+`MetricTile`
 
 **`components/ui/domain.jsx`**
-`AttentionItem` · `EventCard` · `EventRow` · `StaffCard` · `AssignmentCard` · `EventBlock` ·
-`AvailabilityGrid` · `TaskRow` · `Modal` · `ToastHost` · `useConfirm`
+`UpNextItem` · `useHideWithUndo` · `EventCard` · `EventRow` · `TaskRow` · `Modal` (dialog and sheet) ·
+`ToastHost` (with actions such as Undo) · `useConfirm` · `openSpots`
 
-**Shell:** `components/AppShell.jsx` (sidebar + top bar + mobile nav) ·
-`components/EventHeader.jsx` (event identity + tab bar) · `components/onboarding/IntroModal.jsx`
+**Shell:** `components/AppShell.jsx` (sidebar, top bar, the one toast stack, the prototype phone) ·
+`components/EventHeader.jsx` (event identity, facts strip, tabs) ·
+`components/onboarding/IntroModal.jsx` · `components/onboarding/PrototypeNotice.jsx`
+
+**Staffing components** (`components/staffing/`) are built on the same library: the Ask panel and
+the staff phone are `Modal variant="sheet"`, statuses are `StatusBadge`, toasts go through the shared
+`ToastHost`, and form fields are the shared inputs.
 
 **Design tokens:** `app/globals.css` defines spacing, type, radius, neutrals, the single accent and
-the five status ramps as CSS custom properties consumed through Tailwind v4's `@theme`.
+the status ramps as CSS custom properties consumed through Tailwind v4's `@theme`. Light and dark
+follow the OS.
 
-**State:** `lib/store.jsx` — one context holding assignments, task/message/document state and
-derived open positions and attention items, persisted to `localStorage`.
+**State:** `lib/staffing/store.jsx` holds the Staffing Planner (requests, replies, undo);
+`lib/store.jsx` holds tasks, messages, documents and payments and derives Up Next from both. Both
+persist to `localStorage`.
 
 ---
 
@@ -334,12 +345,12 @@ derived open positions and attention items, persisted to `localStorage`.
 Fill these in with real names. The codebase is split so these four areas can be worked on without
 editing the same files.
 
-- **[Team Member]** — Dashboard / Up Next — `app/page.jsx`, `app/attention/`, `app/calendar/`
-- **[Team Member]** — Events — `app/events/`, `components/EventHeader.jsx`
-- **[Team Member]** — Staffing — `app/(app)/staffing/`, `app/(app)/staff/`, `lib/mock/staff.js`
-- **[Team Member]** — Communication & people — `app/messages/`, `app/couples/`, `app/vendors/`
+- **[Team Member]** — Welcome / Dashboard / Up Next — `components/Landing.jsx`, `app/(app)/dashboard/`, `app/(app)/up-next/`, `app/(app)/calendar/`
+- **[Team Member]** — Events — `app/(app)/events/`, `components/EventHeader.jsx`
+- **[Team Member]** — Staffing — `app/(app)/staffing/`, `app/(app)/staff/`, `components/staffing/`, `lib/staffing/`
+- **[Team Member]** — Communication & people — `app/(app)/messages/`, `app/(app)/couples/`, `app/(app)/vendors/`
 
-Shared files to coordinate on before editing: `lib/store.jsx`, `components/ui/*`, `app/globals.css`.
+Shared files to coordinate on before editing: `lib/store.jsx`, `lib/staffing/store.jsx`, `components/ui/*`, `app/globals.css`.
 
 ---
 
@@ -361,8 +372,8 @@ npm run build     # static export into out/
 npx serve out
 ```
 
-**Resetting:** the prototype remembers your changes in `localStorage`. Use **Reset prototype data**
-in the sidebar to restore the seeded scenario.
+**Resetting:** the prototype remembers your changes in `localStorage`. Use **Settings → Reset
+everything** to restore the seeded scenario and see the intro again.
 
 ---
 
@@ -377,14 +388,12 @@ Deployed from `main` to GitHub Pages by `.github/workflows/deploy.yml`:
 ## Known Prototype Limitations
 
 - **No backend.** All state is React context plus `localStorage`, scoped to one browser.
-- **Creating an event does not persist.** `/events/new` validates and confirms, but the five seeded
-  events are fixed so every tester sees the same scenario. The screen says so.
-- **Staff cannot log in.** Accept/decline is performed by the manager on the staff member's behalf,
-  which is how the loop is demonstrated in a single-user prototype.
-- **No real notifications.** "Publish schedule" and "Send reply" change state and show confirmation,
-  but nothing leaves the browser.
-- **The calendar is one month.** Only September 2026 is populated.
-- **Availability is read-only.** Staff availability is seeded and viewable but not editable here;
-  in the real product staff would submit it themselves.
-- **Coverage counts confirmed staff only.** A pending assignment deliberately does not count as confirmed,
-  which is why an event can show an open position while someone is still deciding.
+- **Two sample events.** The data is trimmed to two events, two couples, two vendors and a small team
+  (`lib/mock/scope.js`) so every tester sees the same scenario.
+- **Creating an event does not persist.** `/events/new` validates and shows a review of what would be
+  created, but the sample events are fixed. The screen says so.
+- **Staff cannot log in.** The tester answers for staff with the clearly labelled "Simulate" buttons
+  or the Staff phone (prototype).
+- **No real messages.** Sending texts, replies and the catering guarantee change state and show
+  confirmation, but nothing leaves the browser.
+- **Recording a payment is a manual mark.** There is no payment processing.

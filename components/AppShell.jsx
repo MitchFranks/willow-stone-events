@@ -18,18 +18,21 @@ import { cx } from '@/lib/cx'
 import { useStore } from '@/lib/store'
 import { venue } from '@/lib/mock/events'
 import { Button, Count, Icon } from './ui/primitives'
-import { ToastHost } from './ui/domain'
-import { useOnboarding } from './onboarding/OnboardingProvider'
+import { ToastHost, openSpots } from './ui/domain'
+import { PrototypeNotice } from './onboarding/PrototypeNotice'
 import { AccountMenu } from './AccountMenu'
+import { usePlannerToasts } from './staffing/plannerToasts'
+import { PhoneDrawer } from './staffing/StaffPhone'
 
 // The two things the product is for come first and are the only items with
-// full weight: the attention queue and the staffing planner. Everything else
-// is supporting context and sits under "More", visually quieter.
+// full weight: Up Next and the Staffing Planner. Everything else is
+// supporting context and sits under "More", visually quieter. Icons follow
+// the mapping at the top of components/ui/primitives.jsx.
 const NAV = [
   {
-    heading: 'Do first',
+    heading: 'Start here',
     items: [
-      { href: '/up-next', label: 'Up Next', icon: 'check', badge: 'attention' },
+      { href: '/up-next', label: 'Up Next', icon: 'inbox', badge: 'attention' },
       // One workflow, one menu item. The tab bar inside it links its screens.
       { href: '/staffing', match: '/staffing', label: 'Staffing Planner', icon: 'users', badge: 'openPositions' }
     ]
@@ -48,7 +51,7 @@ const NAV = [
     items: [
       { href: '/calendar', label: 'Calendar', icon: 'calendar' },
       { href: '/messages', label: 'Messages', icon: 'mail', badge: 'messages' },
-      { href: '/couples', label: 'Couples', icon: 'users' },
+      { href: '/couples', label: 'Couples', icon: 'heart' },
       { href: '/vendors', label: 'Vendors', icon: 'truck' }
     ]
   }
@@ -58,10 +61,19 @@ export function AppShell({ children }) {
   const pathname = usePathname()
   const [navOpen, setNavOpen] = useState(false)
   const { attention, openPositions, messageList, toasts, dismissToast } = useStore()
-  const { showIntro } = useOnboarding()
+  // The planner keeps its own toast (with Undo); both go in the one stack below.
+  const planner = usePlannerToasts()
+  const plannerIds = new Set(planner.toasts.map((t) => t.id))
 
   const unreplied = messageList.filter((m) => m.needsReply && !m.replied).length
-  const counts = { attention: attention.filter((a) => a.tone === 'urgent').length, openPositions: openPositions.length, messages: unreplied }
+  const toDoFirst = attention.filter((a) => a.tone === 'urgent').length
+  const spots = openPositions.reduce((n, p) => n + p.short, 0)
+  // Each badge is a number plus the words it stands for (tooltip and screen readers).
+  const counts = {
+    attention: { n: toDoFirst, label: `${toDoFirst} to do first` },
+    openPositions: { n: spots, label: openSpots(spots) },
+    messages: { n: unreplied, label: `${unreplied} awaiting a reply` }
+  }
 
   // Highlight only the most specific nav item for the current route, so a
   // parent is not also lit up on a child route. `match` lets one item own a
@@ -90,7 +102,7 @@ export function AppShell({ children }) {
             aria-controls="main-nav"
             className="grid h-9 w-9 place-items-center rounded-sm border border-line-strong bg-surface text-ink transition-colors hover:bg-surface-sunken lg:hidden"
           >
-            <Icon name="list" size={16} />
+            <Icon name="menu" size={16} />
             <span className="sr-only">Toggle navigation</span>
           </button>
 
@@ -105,19 +117,9 @@ export function AppShell({ children }) {
           </span>
 
           <div className="ml-auto flex items-center gap-2">
-            {/* The tester's goal is always one click away. */}
-            <button
-              type="button"
-              onClick={showIntro}
-              className="inline-flex h-9 items-center gap-2 rounded-sm border border-line-strong px-3 text-small font-medium text-ink transition-colors hover:bg-surface-sunken"
-            >
-              <Icon name="check" size={14} className="text-accent" />
-              Your goal
-            </button>
-            {/* VISIBILITY OF SYSTEM STATUS: the prototype never pretends to be real. */}
-            <span className="inline-flex h-6 items-center rounded-full bg-surface-sunken px-2.5 text-label font-medium text-ink-muted">
-              Early prototype
-            </span>
+            {/* The tester's goal is always one click away, and the prototype never
+                pretends to be real (VISIBILITY OF SYSTEM STATUS). */}
+            <PrototypeNotice />
           </div>
         </div>
       </header>
@@ -138,7 +140,7 @@ export function AppShell({ children }) {
                 <ul className="space-y-px">
                   {group.items.map((item) => {
                     const active = item.href === activeHref
-                    const count = item.badge ? counts[item.badge] : 0
+                    const badge = item.badge ? counts[item.badge] : null
                     return (
                       <li key={item.href}>
                         <Link
@@ -155,7 +157,15 @@ export function AppShell({ children }) {
                         >
                           <Icon name={item.icon} size={16} className={active ? 'text-accent' : 'text-ink-muted'} />
                           <span className="flex-1 truncate">{item.label}</span>
-                          {count > 0 && <Count tone={item.badge === 'attention' || item.badge === 'messages' ? 'urgent' : undefined}>{count}</Count>}
+                          {badge?.n > 0 && (
+                            <span title={badge.label}>
+                              <span aria-hidden="true">
+                                {/* Only the "to do first" count is urgent; other counts stay neutral. */}
+                                <Count tone={item.badge === 'attention' ? 'urgent' : undefined}>{badge.n}</Count>
+                              </span>
+                              <span className="sr-only">{badge.label}</span>
+                            </span>
+                          )}
                         </Link>
                       </li>
                     )
@@ -195,7 +205,12 @@ export function AppShell({ children }) {
         </main>
       </div>
 
-      <ToastHost toasts={toasts} onDismiss={dismissToast} />
+      {/* The prototype staff phone: any screen can open it (Up Next, staffing, staff profiles). */}
+      <PhoneDrawer />
+      <ToastHost
+        toasts={[...planner.toasts, ...toasts]}
+        onDismiss={(id) => (plannerIds.has(id) ? planner.dismiss(id) : dismissToast(id))}
+      />
     </div>
   )
 }

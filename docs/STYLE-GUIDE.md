@@ -2,12 +2,14 @@
 
 How Vue looks and sounds. The tokens live in `app/globals.css`; the shared components live in
 `components/ui/`. A live version of this page (real components, real tokens) is at **`/style-guide`**
-in the running app. When the two disagree, the code wins — fix this document.
+in the running app ("Design library (for reviewers)" in Settings). When the two disagree, the code
+wins — fix this document.
 
 **The feel:** quiet, exact and calm. Venue staff check Vue between tours, setups and phone calls,
 so they should never have to learn it. Luxury here means restraint, precision and calm, not
 ornament: cool stone-grey neutrals, one light display line per screen, hairlines instead of heavy boxes,
-and colour only when it means something.
+and colour only when it means something. This is an early prototype: where a photo will go there is
+a labelled placeholder instead.
 
 ---
 
@@ -38,7 +40,7 @@ and colour only when it means something.
 | `ink-muted` | `#55595E` | `#9FA3A8` | Secondary text: labels, metadata, helper text (5.6:1+) |
 | `on-ink` | `#FAFAFA` | `#121314` | Text on an ink fill |
 | `accent` (Laurel) | `#2F4A3E` | `#9CC1AE` | Focus rings, selection, links, the "now" marker. Never a button fill |
-| `status-now` / `-soft` | `#A8361A` / `#F5E3DB` | `#F0896A` / `#3A1F17` | Act today: open positions, overdue, declined |
+| `status-now` / `-soft` | `#A8361A` / `#F5E3DB` | `#F0896A` / `#3A1F17` | Act today: open spots, overdue, can't make it |
 | `status-soon` / `-soft` | `#7C5400` / `#F2E8D1` | `#DDB25A` / `#33280F` | Coming up this week, needs a look |
 | `status-clear` / `-soft` | `#2B5873` / `#DFE9EF` | `#8DBAD3` / `#172833` | Handled: confirmed, staffed, paid, signed |
 
@@ -84,9 +86,10 @@ loud. Sentence case everywhere; no all-caps labels. Keep reading text under 72 c
   (4–48px). Card padding is `px-6 py-4` (`px-4` on phones); page sections are 24–48px apart.
 - **Radius:** `rounded-sm` (6px) for controls (buttons, inputs, menu items, nav rows),
   `rounded-md` (12px) for containers (cards, modals, toasts), `rounded-full` only for status chips,
-  filter toggles, counts and avatars. **A pill always means a state, never an action.**
+  filter chips, counts and avatars. **A pill always means a state, never an action.**
 - **Depth:** two levels. `shadow-raised` for cards on the canvas, `shadow-overlay` for anything
-  floating (menus, modals, drawers, toasts). No glass, blur, gradients or glows.
+  floating (menus, modals, sheets, toasts). No glass, blur or glows; the landing hero's dark wash
+  over its photo is the one gradient.
 - **Motion** confirms, it doesn't decorate: 150ms for hover and press, about 200ms for panels, with
   `ease-calm` (`cubic-bezier(0.2, 0, 0, 1)`). Nothing lifts on hover; colour changes instead.
   `prefers-reduced-motion` is respected globally.
@@ -103,18 +106,44 @@ Always use the shared component rather than restyling by hand.
 |---|---|
 | Any action | `Button` — `primary` (ink fill, one per region), `secondary` (bordered), `ghost` (borderless), `danger` (bordered, status-now text). Sizes `sm` / `md` / `lg` |
 | A status | `StatusBadge tone="urgent \| warn \| done \| pending \| info \| declined \| empty"` |
-| A count behind a tab or nav item | `Count` (neutral; hide it at zero) |
+| A count behind a tab or nav item | `Count` (neutral; hide it at zero). In the sidebar it carries a label for tooltips and screen readers ("2 to do first") |
+| Filters | `FilterChip` (a toggle with `aria-pressed`; pressed = ink fill) inside a labelled `FilterGroup` |
 | A grouped subject | `Card` (one card = one subject; the border never takes a status colour) |
-| A list of things | `ListRow` inside `Card bodyClassName="px-0 py-0"`; `UpNextItem` lists sit in a `divide-y divide-line` container |
+| A list of things | `ListRow` inside `Card bodyClassName="px-0 py-0"`; `UpNextItem` lists sit in a `divide-y divide-line` container inside a `Card` |
+| An Up Next item | `UpNextItem` (`first` for the one filled button on the page; `onDismiss` with `useHideWithUndo` adds "Hide" + an Undo toast, only on `dismissible` items — never staffing) |
+| An unfilled-role count | `openSpots(n)` → "1 open spot", "3 open spots" |
 | A number with a label | `MetricTile` (large, light figure) |
 | A person | `Avatar` (initials, no colour per person) |
-| Messages to the user | `Alert` (inline), toast (transient), `EmptyState` (nothing here yet) |
+| Messages to the user | `Alert` (inline), toast (transient; may carry `actions` such as Undo), `EmptyState` (nothing here yet) |
+| An overlay | `Modal` — `variant="dialog"` (centred: confirmations, short forms) or `variant="sheet"` (right-hand panel, bottom sheet on phones: longer work) |
+| A destructive action | `useConfirm()` with `danger: true` before it runs |
 | Page navigation | `Breadcrumbs` + `Tabs` (underline tabs, each its own URL) |
-| Forms | `TextInput`, `Select`, `Textarea`: label above in `text-small`, hint below |
+| Forms | `TextInput`, `Select`, `Textarea`: label above in `text-small`, hint below. Pass `error` to show a validation message (status-now, with a glyph) in place of the hint |
 | Account menu | `AccountMenu` |
+
+`Button variant="onDark"` is a white outline for use only on the landing page's dark hero.
 
 **Layout:** a fixed sidebar (sunken active row with a Laurel marker), a 56px top bar, content up to
 1120px wide, 32–48px of space above each page title.
+
+**Navigation icons**, one per destination (never reuse one across destinations, never use a status
+icon for navigation):
+
+| Icon | Destination |
+|---|---|
+| `inbox` | Up Next |
+| `users` | Staffing Planner |
+| `home` | Dashboard |
+| `list` | Events |
+| `user` | Staff Directory |
+| `calendar` | Calendar |
+| `mail` | Messages |
+| `heart` | Couples |
+| `truck` | Vendors |
+| `settings` | Settings |
+| `menu` | The mobile nav toggle |
+
+Status icons have fixed jobs: `alert` act now, `clock` coming up, `check` handled.
 
 **No logo yet.** The name "Vue" is set in Geist Light wherever a mark would go.
 
@@ -123,11 +152,20 @@ Always use the shared component rather than restyling by hand.
 ## 6. Voice
 
 - Plain words, sentence case, no jargon the venue manager would not say out loud.
-- Lead with the fact the user acts on: "Jake declined the ceremony assignment. Find a replacement."
-- Wedding vocabulary first: couple, guarantee, run of show, timeline block, open position. The
+- Lead with the fact the user acts on: "Reception: 2 open spots for servers. Fill spots."
+- Wedding vocabulary first: couple, guarantee, run of show, timeline block, open spot. The
   canonical terms are in [`DATA-DICTIONARY.md`](./DATA-DICTIONARY.md).
+- **One vocabulary, product-wide:**
+  - **Up Next** (title case everywhere: page titles, headings, nav, breadcrumbs, toasts).
+  - **Do first** / **Coming up** for the two groups in Up Next.
+  - An unfilled role is an **open spot** ("1 open spot", "3 open spots"); a covered event is
+    **Fully staffed**.
+  - A staff request is **Not sent · Waiting · Confirmed · Can't make it**.
+  - A message **Needs reply · Replied · No reply needed**.
+  - An event's or couple's share of the queue reads **N in Up Next**.
+  - Labels and headings are in sentence case.
 - Calm, not cute. No exclamation marks in errors, no emoji, no "magical" or "special day".
-- Button labels are verbs: "Send reply", "Fill position", never "OK" or "Submit".
+- Button labels are verbs: "Send reply", "Fill spots", never "OK" or "Submit".
 
 ---
 
@@ -140,8 +178,11 @@ one quiet chip**, not by alarm screens or ever-growing red counts.
   (`status-soon` chip). Only the first item gets the filled button.
 - Counters show only what to do first (`2 to do first`), never the total backlog. Empty = **All caught up**.
 - Counts in the sidebar, top bar and tabs are neutral. Never a red badge for a plain count; the
-  chip on the row carries the urgency.
-- Shortages say **Needs 1 more**, not "Short 1". Titles say what to do ("Reply to Marla"), not what is wrong.
+  chip on the row carries the urgency. The one exception is the Up Next sidebar count, which counts
+  only Do first items and is labelled "N to do first".
+- Shortages say **1 open spot**, not "Short 1" or "-1". Titles say what to do ("Reply to Emily Johnson"), not what is wrong.
+- Non-staffing items can be hidden ("Hide", with Undo). Staffing items cannot: hiding them would look
+  like fixing them. Hidden items come back from "N hidden · Show them" on Up Next or from Settings.
 
 ---
 
@@ -152,6 +193,7 @@ one quiet chip**, not by alarm screens or ever-growing red counts.
 | One ink primary button per region | Two competing primary buttons, or a coloured one |
 | Token utilities (`text-ink-muted`, `bg-status-now-soft`) | Hex values, `text-white`, `dark:` variants |
 | `rounded-sm` controls, `rounded-md` containers | Pill-shaped buttons, nav items or inputs |
+| `shadow-raised` / `shadow-overlay` tokens | Custom `shadow-[...]` values, hover lifts |
 | Pair every status colour with an icon and a word | Rely on colour to say "urgent" |
 | Weights 300–500 | `font-semibold`, `font-bold`, `font-extrabold` |
 | The type scale (`text-small`, `text-heading`...) | Arbitrary sizes like `text-[13px]` |

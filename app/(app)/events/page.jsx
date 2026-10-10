@@ -1,11 +1,12 @@
 'use client'
 
-// SCREEN 4 — Events (list).
+// SCREEN 4 — Events (list). Each card carries the same staffing words as
+// everywhere else: "N open spots" or "Fully staffed".
 
 import { useState } from 'react'
 import { useStore } from '@/lib/store'
 import { EVENT_TYPES, events } from '@/lib/mock/events'
-import { Breadcrumbs, Button, Card, EmptyState, Icon, PageHeader } from '@/components/ui/primitives'
+import { Breadcrumbs, Button, EmptyState, Icon, PageHeader, Select, TextInput } from '@/components/ui/primitives'
 import { EventCard } from '@/components/ui/domain'
 
 export default function EventsPage() {
@@ -43,49 +44,34 @@ export default function EventsPage() {
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-end gap-2">
-        <div className="min-w-[180px] flex-1">
-          <label htmlFor="event-search" className="mb-1 block text-label font-medium text-ink">
-            Search
-          </label>
-          <input
-            id="event-search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Event or couple name"
-            className="w-full h-9 rounded-sm border border-line-strong bg-surface px-3 text-body placeholder:text-ink-muted focus:border-accent"
-          />
-        </div>
-        <div>
-          <label htmlFor="event-type" className="mb-1 block text-label font-medium text-ink">
-            Event type
-          </label>
-          <select
-            id="event-type"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className="h-9 rounded-sm border border-line-strong bg-surface px-3 text-body focus:border-accent"
-          >
-            {['All types', ...EVENT_TYPES].map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="event-sort" className="mb-1 block text-label font-medium text-ink">
-            Sort by
-          </label>
-          <select
-            id="event-sort"
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="h-9 rounded-sm border border-line-strong bg-surface px-3 text-body focus:border-accent"
-          >
-            <option value="soonest">Date: soonest first</option>
-            <option value="latest">Date: latest first</option>
-            <option value="name">Name: A to Z</option>
-          </select>
-        </div>
+      <div className="mb-4 flex flex-wrap items-start gap-2">
+        <TextInput
+          label="Search"
+          id="event-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Event or couple name"
+          className="min-w-[180px] flex-1"
+        />
+        <Select
+          label="Event type"
+          id="event-type"
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          options={['All types', ...EVENT_TYPES]}
+        />
+        <Select
+          label="Sort by"
+          id="event-sort"
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          options={[
+            { value: 'soonest', label: 'Date: soonest first' },
+            { value: 'latest', label: 'Date: latest first' },
+            { value: 'name', label: 'Name: A to Z' }
+          ]}
+        />
       </div>
 
       {filtered.length === 0 ? (

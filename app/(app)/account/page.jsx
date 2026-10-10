@@ -1,9 +1,10 @@
 'use client'
 
-// Account: who is signed in. Read-only in this prototype.
+// Account: who is signed in. Read-only in this prototype, so the page ends
+// with links to where the work and the real controls are (no dead end).
 
 import { venue } from '@/lib/mock/events'
-import { Alert, Avatar, Breadcrumbs, Card, Field, PageHeader, TextInput } from '@/components/ui/primitives'
+import { Alert, Avatar, Breadcrumbs, Card, Field, Icon, ListRow, PageHeader, TextInput } from '@/components/ui/primitives'
 
 // Example contact details for the prototype. Not a real address or number.
 const CONTACT = {
@@ -24,9 +25,7 @@ export default function AccountPage() {
 
         <Card title="Profile" icon="user">
           <div className="mb-5 flex items-center gap-3">
-            <span className="grid h-14 w-14 place-items-center rounded-full bg-surface-sunken text-heading font-medium text-ink">
-              {venue.managerInitials}
-            </span>
+            <Avatar initials={venue.managerInitials} />
             <div>
               <div className="text-heading font-medium text-ink">{venue.manager}</div>
               <div className="text-small text-ink-muted">{venue.managerRole}</div>
@@ -45,6 +44,12 @@ export default function AccountPage() {
             <TextInput id="account-email" label="Email" value={CONTACT.email} readOnly />
             <TextInput id="account-phone" label="Phone" value={CONTACT.phone} readOnly />
           </div>
+        </Card>
+
+        <Card title="Where to next" bodyClassName="px-0 py-0">
+          <ListRow href="/up-next" leading={<Icon name="inbox" size={16} />} title="Up Next" sub="What needs you across every event" />
+          <ListRow href="/settings" leading={<Icon name="settings" size={16} />} title="Settings" sub="Your goal, hidden items and resetting the prototype" />
+          <ListRow href="/dashboard" leading={<Icon name="home" size={16} />} title="Dashboard" sub="Back to the overview" />
         </Card>
       </div>
     </div>

@@ -5,41 +5,91 @@
 //
 // A deliberately plain month grid. In a low-fidelity prototype a calendar's job
 // is to show WHEN things sit relative to each other, not to be a scheduling
-// surface — so each day is a box with chips in it, and the chips are links.
+// surface, so each day is a box with chips in it, and the chips are links.
+// The grid is built from the events list (each event's dateKey), so any month
+// can be shown; months with no events say so instead of looking broken.
 // ---------------------------------------------------------------------------
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useStore } from '@/lib/store'
-import { events } from '@/lib/mock/events'
-import { Breadcrumbs, Card, Icon, PageHeader, StatusBadge } from '@/components/ui/primitives'
+import { TODAY_KEY, events } from '@/lib/mock/events'
+import { Breadcrumbs, Button, Card, Icon, ListRow, PageHeader, StatusBadge } from '@/components/ui/primitives'
 
-// September 2026: the 1st is a Tuesday. Grid starts Monday.
-const MONTH_DAYS = 30
-const LEADING_BLANKS = 1
-const TODAY = 17
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const pad = (n) => String(n).padStart(2, '0')
+const keyOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`
+const monthName = (y, m) =>
+  new Date(Date.UTC(y, m, 1)).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 
-const EVENTS_BY_DAY = {
-  19: ['evt-1001'],
-  24: ['evt-1002']
+const [TODAY_Y, TODAY_M] = TODAY_KEY.split('-').map(Number)
+
+/** The chip's tone: the same three states the legend lists. */
+function chipTone(items) {
+  if (items.some((a) => a.tone === 'urgent')) return 'urgent'
+  if (items.length) return 'warn'
+  return 'done'
+}
+
+const LEGEND = [
+  { tone: 'urgent', label: 'Has something to do first' },
+  { tone: 'warn', label: 'Has things coming up' },
+  { tone: 'done', label: 'All set' }
+]
+
+/** The "Today" marker, used in the grid and in the legend so they match. */
+function TodayMark() {
+  return (
+    <StatusBadge tone="info" size="sm">
+      Today
+    </StatusBadge>
+  )
 }
 
 export default function CalendarPage() {
-  const { coverageForEvent, attentionForEvent } = useStore()
-  const cells = []
-  for (let i = 0; i < LEADING_BLANKS; i += 1) cells.push(null)
-  for (let d = 1; d <= MONTH_DAYS; d += 1) cells.push(d)
+  const { attentionForEvent } = useStore()
+  // Months counted from January of year 0 so prev/next is a plain +1 / -1.
+  const [month, setMonth] = useState(TODAY_Y * 12 + (TODAY_M - 1))
+  const y = Math.floor(month / 12)
+  const m = month % 12
+  const isThisMonth = y === TODAY_Y && m === TODAY_M - 1
+
+  const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate()
+  const leading = (new Date(Date.UTC(y, m, 1)).getUTCDay() + 6) % 7 // grid starts Monday
+  const cells = [...Array(leading).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+
+  const prefix = `${y}-${pad(m + 1)}-`
+  const monthEvents = events.filter((e) => e.dateKey.startsWith(prefix))
+  const upcoming = events.filter((e) => e.dateKey >= TODAY_KEY).sort((a, b) => a.dateKey.localeCompare(b.dateKey))
 
   return (
     <div>
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Calendar' }]} />
-      <PageHeader
-        title="Calendar"
-        lead="September 2026"
-      />
+      <PageHeader title="Calendar" lead="When each event sits, and which ones still need something." />
 
-      <Card bodyClassName="px-2 py-2 sm:px-3 sm:py-3">
-        <div className="grid grid-cols-7 gap-1 text-center text-label font-medium tracking-wide text-ink-muted">
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+      <Card
+        title={monthName(y, m)}
+        icon="calendar"
+        subtitle={monthEvents.length ? `${monthEvents.length} ${monthEvents.length === 1 ? 'event' : 'events'}` : 'No events'}
+        action={
+          <div className="flex items-center gap-1">
+            {!isThisMonth && (
+              <Button size="sm" variant="ghost" onClick={() => setMonth(TODAY_Y * 12 + (TODAY_M - 1))}>
+                This month
+              </Button>
+            )}
+            <Button size="sm" variant="secondary" onClick={() => setMonth((x) => x - 1)} aria-label="Previous month">
+              <Icon name="arrowLeft" size={14} />
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setMonth((x) => x + 1)} aria-label="Next month">
+              <Icon name="arrowRight" size={14} />
+            </Button>
+          </div>
+        }
+        bodyClassName="px-2 py-2 sm:px-3 sm:py-3"
+      >
+        <div className="grid grid-cols-7 gap-1 text-center text-label font-medium text-ink-muted">
+          {WEEKDAYS.map((d) => (
             <div key={d} className="py-1">
               {d}
             </div>
@@ -47,80 +97,63 @@ export default function CalendarPage() {
         </div>
         <div className="mt-1 grid grid-cols-7 gap-1">
           {cells.map((day, i) => {
-            if (day === null) return <div key={`blank-${i}`} className="min-h-[72px] rounded-md border border-transparent" />
-            const ids = EVENTS_BY_DAY[day] || []
-            const isToday = day === TODAY
+            if (day === null) return <div key={`blank-${i}`} className="min-h-[72px]" />
+            const key = keyOf(y, m, day)
+            const dayEvents = monthEvents.filter((e) => e.dateKey === key)
+            const isToday = key === TODAY_KEY
             return (
               <div
-                key={day}
+                key={key}
                 className={
                   isToday
-                    ? 'min-h-[72px] rounded-md border-2 border-accent bg-surface-sunken p-1'
-                    : 'min-h-[72px] rounded-md border border-line bg-surface p-1'
+                    ? 'min-h-[72px] min-w-0 rounded-md border-2 border-accent bg-surface p-1'
+                    : 'min-h-[72px] min-w-0 rounded-md border border-line bg-surface p-1'
                 }
               >
-                <div className={isToday ? 'text-label font-medium text-accent' : 'text-label text-ink-muted'}>
-                  {day}
-                  {isToday && <span className="ml-1 font-medium">Today</span>}
+                <div className="flex flex-wrap items-center gap-1 text-label text-ink-muted">
+                  <span className={isToday ? 'font-medium text-ink' : undefined}>{day}</span>
+                  {isToday && <TodayMark />}
                 </div>
                 <div className="mt-1 space-y-1">
-                  {ids.map((id) => {
-                    const event = events.find((e) => e.id === id)
-                    const needs = attentionForEvent(id).length
-                    return (
-                      <Link
-                        key={id}
-                        href={`/events/${id}`}
-                        className={
-                          needs
-                            ? 'block truncate rounded-md border border-line-strong bg-surface-sunken px-1 py-0.5 text-label font-medium text-accent hover:bg-surface-sunken/70'
-                            : 'block truncate rounded-md border border-status-clear-soft bg-status-clear-soft px-1 py-0.5 text-label font-medium text-status-clear'
-                        }
-                        title={event.name}
-                      >
-                        {event.name}
-                      </Link>
-                    )
-                  })}
+                  {dayEvents.map((event) => (
+                    <Link key={event.id} href={`/events/${event.id}`} title={event.name} className="block max-w-full hover:underline">
+                      <StatusBadge tone={chipTone(attentionForEvent(event.id))} size="sm" className="max-w-full overflow-hidden">
+                        <span className="min-w-0 truncate">{event.name}</span>
+                      </StatusBadge>
+                    </Link>
+                  ))}
                 </div>
               </div>
             )
           })}
         </div>
+        {monthEvents.length === 0 && (
+          <p className="mt-3 px-1 text-small text-ink-muted">
+            Nothing is booked in {monthName(y, m)}. Use the arrows to move between months.
+          </p>
+        )}
       </Card>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Card title="Later in the season" icon="calendar">
-          <ul className="space-y-2">
-            {events
-              .filter((e) => !['evt-1001', 'evt-1002'].includes(e.id))
-              .map((e) => (
-                <li key={e.id}>
-                  <Link href={`/events/${e.id}`} className="flex items-center gap-2 text-body hover:text-accent">
-                    <Icon name="chevronRight" size={13} className="text-ink-muted" />
-                    <span className="font-medium">{e.name}</span>
-                    <span className="text-label text-ink-muted">{e.dateShort}</span>
-                  </Link>
-                </li>
-              ))}
-          </ul>
+        <Card title="Upcoming events" icon="list" bodyClassName="px-0 py-0">
+          {upcoming.map((e) => (
+            <ListRow key={e.id} href={`/events/${e.id}`} title={e.name} sub={`${e.dateShort} · ${e.type}`} />
+          ))}
         </Card>
 
         <Card title="Key" icon="info">
-          <div className="flex flex-wrap gap-2">
-            <StatusBadge tone="pending" size="sm">
-              Has things to do
-            </StatusBadge>
-            <StatusBadge tone="done" size="sm">
-              All set
-            </StatusBadge>
-            <span className="inline-flex items-center gap-1 rounded-pill border-2 border-accent px-2 py-0.5 text-label text-accent">
-              Today
-            </span>
-          </div>
-          <p className="mt-2 text-label text-ink-muted">
-            This month is the only one populated in the prototype. Other months would work the same way.
-          </p>
+          <ul className="flex flex-wrap gap-2">
+            {LEGEND.map((l) => (
+              <li key={l.tone}>
+                <StatusBadge tone={l.tone} size="sm">
+                  {l.label}
+                </StatusBadge>
+              </li>
+            ))}
+            <li className="flex items-center gap-1.5 text-small text-ink-muted">
+              <TodayMark /> outlined day
+            </li>
+          </ul>
         </Card>
       </div>
     </div>

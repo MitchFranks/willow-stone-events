@@ -1,10 +1,11 @@
 'use client'
 
-// The B.0 vocabulary: six indicators, each an icon and a word, plus the two
-// marks that can sit beside a status ("Check" and "OK'd").
+// Request status and the marks that can sit beside it, all on StatusBadge:
+// the status itself (Not sent · Waiting · Confirmed · Can't make it, plus
+// Removed and Backup), a warning about the person's day, and "You said it's fine".
 
-import { cx } from '@/lib/cx'
 import { Icon, StatusBadge } from '@/components/ui/primitives'
+import { openSpots } from '@/components/ui/domain'
 import { displayStatus } from '@/lib/staffing/derive'
 
 export function RequestStatus({ request, st, size = 'sm', showNote = true }) {
@@ -19,72 +20,48 @@ export function RequestStatus({ request, st, size = 'sm', showNote = true }) {
   )
 }
 
-/** Small pill with an icon and a word, in a status tone. */
-const CHIP_TONES = {
-  done: 'bg-status-clear-soft text-status-clear border-status-clear-soft',
-  pending: 'bg-surface-sunken text-ink-muted border-line',
-  warn: 'bg-status-soon-soft text-status-soon border-status-soon-soft',
-  info: 'bg-surface-sunken text-ink-muted border-line',
-  empty: 'bg-surface-sunken text-ink-muted border-line',
-  neutral: 'bg-surface text-ink border-line'
-}
-
-export function Chip({ tone = 'neutral', icon, title, children, className = '' }) {
-  return (
-    <span
-      title={title}
-      className={cx(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-label font-medium',
-        CHIP_TONES[tone],
-        className
-      )}
-    >
-      {icon && <Icon name={icon} size={11} />}
-      {children}
-    </span>
-  )
-}
-
-/** "Check" mark: soft and hard rule issues. Hover shows every issue. */
+/**
+ * A warning about someone's day. "Heads up" for things worth a look (outside
+ * their usual hours); "Conflict" for things that need a reason (away, double-
+ * booked, no certificate). The first message is spelled out; hover lists all.
+ */
 export function CheckMark({ issues }) {
   const real = issues.filter((i) => i.severity === 'soft' || i.severity === 'hard')
   if (!real.length) return null
   const hard = real.find((i) => i.severity === 'hard')
   const first = hard || real[0]
   return (
-    <span
-      title={real.map((i) => i.message).join('\n')}
-      className="inline-flex max-w-full items-start gap-1.5 rounded-full border border-status-soon-soft bg-status-soon-soft px-2.5 py-0.5 text-label font-medium text-status-soon"
-    >
-      <Icon name="alert" size={11} className="mt-[2px]" />
-      <span className="min-w-0 whitespace-normal">
-        {hard ? 'Needs a reason' : 'Check'}: {first.message}
-        {real.length > 1 && ` (+${real.length - 1})`}
+    <span title={real.map((i) => i.message).join('\n')} className="inline-flex max-w-full flex-wrap items-center gap-1.5">
+      <StatusBadge tone="warn" size="sm">
+        {hard ? 'Conflict' : 'Heads up'}
+      </StatusBadge>
+      <span className="text-label text-ink">
+        {first.message}
+        {real.length > 1 && ` (+${real.length - 1} more)`}
       </span>
     </span>
   )
 }
 
-/** "OK'd" mark: an override that has been recorded. Hover shows the reason. */
+/** A warning the manager already said is fine. Hover shows the reason. */
 export function OkdMark({ overrides }) {
   if (!overrides?.length) return null
   return (
     <span
-      title={overrides.map((o) => `${o.message}${o.reason ? ` · OK because: ${o.reason}` : ''}`).join('\n')}
+      title={overrides.map((o) => `${o.message}${o.reason ? ` · Fine because: ${o.reason}` : ''}`).join('\n')}
       className="inline-flex items-center gap-1 text-label text-ink-muted"
     >
-      <Icon name="check" size={11} />
-      OK&apos;d
+      <Icon name="check" size={12} />
+      You said it&apos;s fine
     </span>
   )
 }
 
-/** Open spot: a derived gap, never a person. Neutral and dashed, never red. */
+/** Open spots: a derived gap, never a person. Neutral, never red. */
 export function OpenSpotChip({ count = 1 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-dashed border-ink-muted bg-surface px-2.5 py-0.5 text-label font-medium text-ink-muted">
-      <Icon name="plus" size={11} />
-      {count > 1 ? `${count} open spots` : 'Open spot'}
-    </span>
+    <StatusBadge tone="empty" size="sm">
+      {openSpots(count)}
+    </StatusBadge>
   )
 }

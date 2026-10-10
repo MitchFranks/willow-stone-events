@@ -14,11 +14,11 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
 import { cx } from '@/lib/cx'
 import { venue } from '@/lib/mock/events'
-import { Icon } from './ui/primitives'
+import { Avatar, Icon } from './ui/primitives'
 
 const ITEMS = [
   { href: '/account', label: 'Account', icon: 'user' },
-  { href: '/settings', label: 'Settings', icon: 'list' }
+  { href: '/settings', label: 'Settings', icon: 'settings' }
 ]
 
 export function AccountMenu() {
@@ -81,9 +81,7 @@ export function AccountMenu() {
           open && 'bg-surface-sunken'
         )}
       >
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-sunken text-label font-medium text-ink ring-1 ring-line ring-inset">
-          {venue.managerInitials}
-        </span>
+        <Avatar initials={venue.managerInitials} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-small font-medium text-ink">{venue.manager}</span>
           <span className="block truncate text-label text-ink-muted">{venue.managerRole}</span>
