@@ -30,7 +30,7 @@ export default function Staffing2EventsPage() {
 
   return (
     <div>
-      <PageHeader title="Staffing Planner" lead="Let's get this party staffed" />
+      <PageHeader title="Staffing Planner" lead="Which events still need people." />
       <Staffing2Nav />
 
       {loadError && (

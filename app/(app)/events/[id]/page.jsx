@@ -113,12 +113,6 @@ export default function EventUpNextPage({ params }) {
           )}
         </>
       )}
-
-      <Card className="mt-5" title="About this list" icon="info">
-        <p className="text-label text-ink-muted">
-          These are the items from your Up Next page that belong to this event. Dismissing one here moves it out of Up Next everywhere.
-        </p>
-      </Card>
     </div>
   )
 }

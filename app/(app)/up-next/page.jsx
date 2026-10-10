@@ -13,7 +13,6 @@ import { useStore } from '@/lib/store'
 import { events } from '@/lib/mock/events'
 import { Breadcrumbs, Button, Card, EmptyState, Icon, PageHeader } from '@/components/ui/primitives'
 import { UpNextItem } from '@/components/ui/domain'
-import { FirstCoupleItem } from '@/components/onboarding/FirstCoupleItem'
 
 const KINDS = [
   { id: 'all', label: 'Everything' },
@@ -39,11 +38,8 @@ export default function UpNextPage() {
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Up Next' }]} />
       <PageHeader
         title="Up next"
-        lead="Everything worth doing next, with the most useful first. Nothing here was entered by hand — each item is generated from the current state of your events, assignments, messages and documents."
+        lead="Everything that needs you, most useful first."
       />
-
-      {/* A new venue's first item: add a couple (the first-run guide lands here). */}
-      <FirstCoupleItem />
 
       {/* Filters — PROGRESSIVE DISCLOSURE for a long queue. */}
       <div className="mb-4 space-y-2">
@@ -163,15 +159,6 @@ export default function UpNextPage() {
           )}
         </>
       )}
-
-      <Card className="mt-5" title="How this list is put together" icon="info">
-        <ul className="space-y-1.5 text-label text-ink-muted">
-          <li>• An assignment that is declined or unfilled becomes an open position, and every open position appears here.</li>
-          <li>• A couple or vendor message with no reply appears here until you answer it.</li>
-          <li>• A task that is due or overdue appears here until it is ticked off.</li>
-          <li>• A document awaiting signature appears here until it is signed.</li>
-        </ul>
-      </Card>
     </div>
   )
 }

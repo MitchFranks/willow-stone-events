@@ -33,7 +33,7 @@ export default function InboxPage() {
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Messages' }]} />
       <PageHeader
         title="Messages"
-        lead="Couple, vendor and staff messages, filed to the event they belong to. Anything still waiting on a reply also shows in Up Next."
+        lead="Couples, vendors and staff."
       />
 
       <div className="mb-3 flex flex-wrap gap-1.5">

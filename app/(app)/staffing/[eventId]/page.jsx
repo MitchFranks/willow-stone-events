@@ -144,8 +144,8 @@ function Crew({ eventId }) {
       key: 'check',
       tone: 'info',
       text: allSeed
-        ? `${n} ${n === 1 ? 'person has' : 'people have'} something to check, such as times outside what they usually work. These were set up before the planner checked.`
-        : `${n} ${n === 1 ? 'person has' : 'people have'} something to check before the day.`,
+        ? `${n} ${n === 1 ? 'person is' : 'people are'} scheduled outside their usual hours.`
+        : `${n} ${n === 1 ? 'person has' : 'people have'} something to check.`,
       action: (
         <Button
           size="sm"

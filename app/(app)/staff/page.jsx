@@ -34,7 +34,7 @@ export default function StaffDirectoryPage() {
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Staff Directory' }]} />
       <PageHeader
         title="Staff directory"
-        lead={`${staff.length} people. Open anyone to see their availability, their shifts, and what they have accepted or declined.`}
+        lead="Open anyone to see their availability and shifts."
         actions={
           <Button href="/staffing/team" variant="primary" size="md" data-guide="view-availability">
             <Icon name="clock" size={14} />

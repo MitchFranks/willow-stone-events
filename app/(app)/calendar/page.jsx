@@ -34,7 +34,7 @@ export default function CalendarPage() {
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Calendar' }]} />
       <PageHeader
         title="Calendar"
-        lead="September 2026. Events are colour-flagged by whether anything still needs doing for them."
+        lead="September 2026"
       />
 
       <Card bodyClassName="px-2 py-2 sm:px-3 sm:py-3">

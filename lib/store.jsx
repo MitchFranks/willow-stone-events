@@ -459,13 +459,13 @@ export function StoreProvider({ children }) {
         id: `openPosition:${openPosition.id}`,
         kind: 'staffing',
         tone: openPosition.urgency,
-        title: `${openPosition.block.name} needs ${openPosition.short} more ${pluralRole(openPosition.role, openPosition.short)} · ${openPosition.event.name}`,
+        title: `${openPosition.block.name} needs ${openPosition.short} more ${pluralRole(openPosition.role, openPosition.short)}`,
         what: who
           ? `${who.name} declined the ${openPosition.block.name.toLowerCase()} assignment.`
           : `${openPosition.block.name} has ${openPosition.accepted} of ${openPosition.required} ${openPosition.role} confirmed.`,
         why: openPosition.event.primary
-          ? `${openPosition.event.name} is ${daysOutLabel(openPosition.event)}. Filling it keeps this timeline block fully staffed.`
-          : `${openPosition.event.name} is ${daysOutLabel(openPosition.event)}.`,
+          ? `${daysOutLabel(openPosition.event)}. Until it is filled, this block runs short-staffed.`
+          : `${daysOutLabel(openPosition.event)}.`,
         eventId: openPosition.event.id,
         eventName: openPosition.event.name,
         meta: `${openPosition.block.name} · ${hourLabel(openPosition.block.start)}–${hourLabel(openPosition.block.end)}`,
@@ -484,7 +484,7 @@ export function StoreProvider({ children }) {
         id: `publish:${event.id}`,
         kind: 'staffing',
         tone: 'warn',
-        title: `Send ${drafts} ${drafts === 1 ? 'text' : 'texts'} for ${event.name}`,
+        title: `Send ${drafts} ${drafts === 1 ? 'text' : 'texts'}`,
         what: 'People are chosen, but they have not been asked yet.',
         why: 'Sending the text lets each person say yes or no.',
         eventId: event.id,
@@ -510,7 +510,7 @@ export function StoreProvider({ children }) {
           : 'No reply has been sent yet.',
         eventId: m.eventId,
         eventName: event ? event.name : 'No event',
-        meta: m.fromRole,
+        meta: m.fromRole.split(' · ')[0],
         actionLabel: 'Open and reply',
         href: `/messages/${m.id}`
       })
@@ -548,7 +548,7 @@ export function StoreProvider({ children }) {
         why: 'Once it is signed, the couple has formally agreed to the schedule.',
         eventId: d.eventId,
         eventName: event ? event.name : 'No event',
-        meta: `${d.kind} · ${d.status}`,
+        meta: 'Awaiting signature',
         actionLabel: 'Open documents',
         href: `/events/${d.eventId}/documents`
       })

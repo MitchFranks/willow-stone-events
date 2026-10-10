@@ -23,7 +23,7 @@ function usuallyFree(p) {
 }
 
 export default function Staffing2TeamPage() {
-  const { state, hydrated, removeAway, reset } = useStaffing2()
+  const { state, hydrated, removeAway } = useStaffing2()
   const [open, setOpen] = useState(null)
 
   return (
@@ -120,12 +120,6 @@ export default function Staffing2TeamPage() {
           </ul>
         </Card>
       )}
-
-      <p className="mt-6 text-center">
-        <button type="button" onClick={reset} className="text-label font-medium text-ink-muted underline-offset-2 hover:text-accent hover:underline">
-          Reset sample data
-        </button>
-      </p>
     </div>
   )
 }

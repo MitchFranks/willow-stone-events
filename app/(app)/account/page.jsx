@@ -15,7 +15,7 @@ export default function AccountPage() {
   return (
     <div>
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Account' }]} />
-      <PageHeader title="Account" lead="Who is signed in to Vue on this device." />
+      <PageHeader title="Account" lead="Signed in on this device." />
 
       <div className="max-w-2xl space-y-4">
         <Alert tone="info" title="This is a prototype">

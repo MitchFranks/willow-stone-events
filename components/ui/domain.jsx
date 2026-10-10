@@ -26,16 +26,19 @@ import { Avatar, Button, Card, Icon, ListRow, StatusBadge } from './primitives'
  * Lists of these sit in a container with `divide-y divide-line`.
  */
 
-export function UpNextItem({ item, compact = false, first = false }) {
+export function UpNextItem({ item, compact = false, first = false, badge = false }) {
   const urgent = item.tone === 'urgent'
   return (
     <article className="bg-surface px-4 py-4 transition-colors duration-150 hover:bg-surface-sunken/40 sm:px-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-6">
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <StatusBadge tone={urgent ? 'urgent' : 'warn'} size="sm">
-              {urgent ? 'Do first' : 'Coming up'}
-            </StatusBadge>
+            {/* Only where the list is not already grouped under "Do first" / "Coming up". */}
+            {badge && (
+              <StatusBadge tone={urgent ? 'urgent' : 'warn'} size="sm">
+                {urgent ? 'Do first' : 'Coming up'}
+              </StatusBadge>
+            )}
             <Link
               href={`/events/${item.eventId}`}
               className="rounded-sm px-1 text-small text-ink-muted transition-colors hover:text-accent"
@@ -50,11 +53,11 @@ export function UpNextItem({ item, compact = false, first = false }) {
           {!compact && (
             <dl className="mt-2 space-y-1 text-small">
               <div className="flex gap-3">
-                <dt className="w-28 shrink-0 text-ink-muted">What</dt>
+                <dt className="w-16 shrink-0 text-ink-muted">What</dt>
                 <dd className="text-ink">{item.what}</dd>
               </div>
               <div className="flex gap-3">
-                <dt className="w-28 shrink-0 text-ink-muted">Why it matters</dt>
+                <dt className="w-16 shrink-0 text-ink-muted">Why</dt>
                 <dd className="text-ink">{item.why}</dd>
               </div>
             </dl>

@@ -26,7 +26,7 @@ export default function SettingsPage() {
   return (
     <div>
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Settings' }]} />
-      <PageHeader title="Settings" lead="Prototype controls. Changes apply straight away and are kept on this device." />
+      <PageHeader title="Settings" lead="Prototype controls." />
 
       <div className="max-w-2xl space-y-4">
         <Card title="Your goal and the prototype notice" subtitle="The message shown when you first opened the prototype." icon="list">

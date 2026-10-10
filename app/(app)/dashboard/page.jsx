@@ -28,18 +28,11 @@ export default function DashboardPage() {
     <div>
       <PageHeader
         title="Here's what to tackle next across your weddings."
-        lead={`${venue.name} · ${venue.today}. Everything below is ordered so the most useful thing to do comes first.`}
+        lead={`${venue.name} · ${venue.today}`}
       />
 
       {/* Counters that describe WORK, not vanity metrics. Each is a route in. */}
-      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-        <MetricTile
-          label="Up next"
-          value={urgent.length}
-          tone={attention.length ? 'accent' : 'done'}
-          sub={`to do first ·  coming up`}
-          href="/up-next"
-        />
+      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
         <MetricTile
           label="Open positions"
           value={openPositions.length}
@@ -65,9 +58,6 @@ export default function DashboardPage() {
               <Icon name="list" size={17} className="text-accent" />
               Up next
             </h2>
-            <p className="mt-0.5 text-label text-ink-muted">
-              Picked for you automatically. Each item says what happened, why it matters and what to do.
-            </p>
           </div>
           <Link href="/up-next" className="text-label text-accent underline-offset-2 hover:underline">
             See everything ({attention.length})
@@ -83,10 +73,10 @@ export default function DashboardPage() {
         ) : (
           <div className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface shadow-raised">
             {urgent.slice(0, 3).map((item, i) => (
-              <UpNextItem key={item.id} item={item} first={i === 0} />
+              <UpNextItem key={item.id} item={item} badge first={i === 0} />
             ))}
             {soon.slice(0, 2).map((item, i) => (
-              <UpNextItem key={item.id} item={item} compact first={urgent.length === 0 && i === 0} />
+              <UpNextItem key={item.id} item={item} badge compact first={urgent.length === 0 && i === 0} />
             ))}
           </div>
         )}

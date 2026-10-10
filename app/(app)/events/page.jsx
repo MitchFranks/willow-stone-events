@@ -34,7 +34,7 @@ export default function EventsPage() {
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Events' }]} />
       <PageHeader
         title="Events"
-        lead="Every wedding and wedding-weekend event on the books: the wedding itself, rehearsal dinners, engagement parties, showers, welcome parties and brunches."
+        lead="Weddings and the events around them."
         actions={
           <Button href="/events/new" variant="primary" size="md">
             <Icon name="plus" size={14} />
@@ -118,29 +118,6 @@ export default function EventsPage() {
           ))}
         </div>
       )}
-
-      <Card className="mt-5" title="Event types in this prototype" icon="info">
-        <div className="flex flex-wrap gap-1.5">
-          {EVENT_TYPES.map((t) => {
-            const n = events.filter((e) => e.type === t).length
-            return (
-              <span
-                key={t}
-                className={
-                  n
-                    ? 'rounded-md border border-line bg-surface-sunken px-2 py-0.5 text-label text-ink'
-                    : 'rounded-md border border-dashed border-line px-2 py-0.5 text-label text-ink-muted'
-                }
-              >
-                {t} {n > 0 && `(${n})`}
-              </span>
-            )
-          })}
-        </div>
-        <p className="mt-2 text-label text-ink-muted">
-          Types shown in grey have no events booked yet, but are selectable when creating one.
-        </p>
-      </Card>
     </div>
   )
 }

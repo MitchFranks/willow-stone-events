@@ -14,9 +14,8 @@
 // ---------------------------------------------------------------------------
 
 import Link from 'next/link'
-import { upNextLabel, useStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
 import { events, venue } from '@/lib/mock/events'
-import { staff } from '@/lib/mock/staff'
 import { Button, Icon } from './ui/primitives'
 
 export function Landing() {
@@ -25,7 +24,7 @@ export function Landing() {
 
   const figures = [
     { value: events.length, label: 'Weddings & events' },
-    { value: staff.length, label: 'On the team' },
+    { value: urgent, label: 'To do first' },
     { value: openPositions.length, label: 'Open positions' }
   ]
 
@@ -67,15 +66,6 @@ export function Landing() {
             Fill open positions
           </Button>
         </div>
-
-        <p className="mt-6 flex items-center gap-2 text-small text-ink-muted">
-          <Icon
-            name={urgent ? 'alert' : attention.length ? 'clock' : 'check'}
-            size={14}
-            className={urgent ? 'text-status-now' : attention.length ? 'text-status-soon' : 'text-status-clear'}
-          />
-          Up next: {upNextLabel(attention)}
-        </p>
 
         {/* Live figures, set large and light. */}
         <dl className="mt-16 grid max-w-3xl grid-cols-1 border-t border-line sm:grid-cols-3">

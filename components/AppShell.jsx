@@ -179,7 +179,7 @@ export function AppShell({ children }) {
             ))}
 
             <div className="mt-6 border-t border-line pt-4">
-              <Button href="/events/new" variant="primary" size="md" className="w-full">
+              <Button href="/events/new" variant="secondary" size="md" className="w-full">
                 <Icon name="plus" size={14} />
                 New event
               </Button>
