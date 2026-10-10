@@ -7,23 +7,26 @@
 //     make one of exactly the length you want
 //   • click a block to open its editor (title, start, end, note, Needs staff)
 //   • drag a block to move it; drag its top or bottom edge to resize it
-//   • delete from the editor or with the Delete key, with an Undo afterwards
-//   • overlapping blocks sit side by side, and a Create button for the keyboard
+//   • delete from the editor, or focus a block and press Delete; every change
+//     drops a toast with an Undo
+//   • overlapping blocks sit side by side
+// KEYBOARD: "Add block" opens the editor, and every block is focusable: Enter
+// edits it, Delete removes it (with Undo).
 // A block with Needs staff ticked is also a block in the Staffing Planner.
 // Everything snaps to 15 minutes and saves as you go.
 
-import { use, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { use, useCallback, useRef, useState } from 'react'
+import Link from 'next/link'
 import { events } from '@/lib/mock/events'
+import { useStore } from '@/lib/store'
 import { clockLabel, fromInputValue, parseClock, toInputValue, useTimelineEdits } from '@/lib/timelineEdits'
-import { Button, Card, EmptyState, Icon } from '@/components/ui/primitives'
+import { Button, Card, EmptyState, Icon, TextInput, Textarea } from '@/components/ui/primitives'
+import { Modal, useConfirm } from '@/components/ui/domain'
 
 const PX = 56 // pixels per hour
 const SNAP = 15 // minutes
 const DEFAULT_LEN = 60
 const MIN_LEN = 15
-
-const INPUT =
-  'w-full rounded-sm border border-line-strong bg-surface px-3 py-2 text-body text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent'
 
 const snap = (m) => Math.round(m / SNAP) * SNAP
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi)
@@ -72,149 +75,122 @@ const sortRows = (rows) =>
 const range = (s, e) => `${clockLabel(s)} – ${clockLabel(e)}`
 
 /* ---------------------------------------------------------------- editor -- */
+// The library Modal, so it behaves like every other dialog: focus moves in,
+// Escape closes, focus returns to the block. Nothing is fixed silently: a
+// blank title or an end before the start is shown as an error on the field.
 
-function Editor({ value, isNew, anchorId, onSave, onDelete, onClose }) {
+/** "12:00 AM" as an end time means midnight, the end of the day. */
+const endMinutes = (text) => {
+  const e = parseClock(text)
+  return e === 0 ? 1440 : e
+}
+
+function Editor({ value, isNew, onSave, onDelete, onClose }) {
   const [form, setForm] = useState(value)
-  const [pos, setPos] = useState(null)
-  const titleRef = useRef(null)
+  const [errors, setErrors] = useState({})
   const set = (patch) => setForm((f) => ({ ...f, ...patch }))
-
-  // Sit beside the block, like Google Calendar's pop-over.
-  const place = useCallback(() => {
-    const el = document.querySelector(`[data-row="${anchorId}"]`)
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    const W = 340
-    const room = window.innerWidth - r.right > W + 24
-    setPos({
-      left: room ? r.right + 10 : Math.max(12, r.left - W - 10),
-      top: clamp(r.top, 72, Math.max(72, window.innerHeight - 440))
-    })
-  }, [anchorId])
-
-  useLayoutEffect(() => {
-    place()
-    window.addEventListener('scroll', place, true)
-    window.addEventListener('resize', place)
-    return () => {
-      window.removeEventListener('scroll', place, true)
-      window.removeEventListener('resize', place)
-    }
-  }, [place])
-
-  // The click that opened this editor ends after it mounts and would pull focus
-  // back to the page, so take focus once that has settled.
-  useEffect(() => {
-    const t = setTimeout(() => titleRef.current?.focus(), 40)
-    return () => clearTimeout(t)
-  }, [])
-
-  useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
 
   const save = () => {
     const s = parseClock(form.time)
-    let e = parseClock(form.end)
-    if (s == null) return
-    if (e == null || e <= s) e = s + DEFAULT_LEN
-    onSave({ ...form, time: clockLabel(s), end: clockLabel(e), title: form.title.trim() || '(No title)' })
+    const e = endMinutes(form.end)
+    const next = {}
+    if (!form.title.trim()) next.title = 'Give the block a title.'
+    if (s == null) next.time = 'Enter a start time.'
+    if (e == null) next.end = 'Enter an end time.'
+    else if (s != null && e <= s) next.end = `Ends before it starts. Pick a time after ${clockLabel(s)}.`
+    setErrors(next)
+    if (Object.keys(next).length) return
+    onSave({ ...form, time: clockLabel(s), end: clockLabel(e), title: form.title.trim() })
   }
 
   return (
-    <div
-      role="dialog"
-      aria-label={isNew ? 'New block' : 'Edit block'}
-      style={pos ? { left: pos.left, top: pos.top, width: 340 } : { visibility: 'hidden' }}
-      className="fixed z-40 rounded-md border border-line bg-surface p-4 shadow-overlay"
+    <Modal
+      open
+      onClose={onClose}
+      title={isNew ? 'New block' : 'Edit block'}
+      labelledBy="block-editor-title"
+      footer={
+        <>
+          {!isNew && (
+            <Button variant="danger" onClick={onDelete} className="mr-auto">
+              <Icon name="trash" size={15} />
+              Delete
+            </Button>
+          )}
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={save}>
+            Save
+          </Button>
+        </>
+      }
     >
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-label font-medium uppercase tracking-wide text-ink-muted">{isNew ? 'New block' : 'Edit block'}</span>
-        <button type="button" onClick={onClose} className="rounded-full p-1.5 text-ink-muted hover:bg-surface-sunken hover:text-accent" aria-label="Close">
-          <Icon name="x" size={14} />
-        </button>
-      </div>
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault()
+          save()
+        }}
+        className="space-y-3"
+      >
+        <TextInput
+          label="Title"
+          id="blk-title"
+          data-autofocus
+          value={form.title}
+          onChange={(e) => set({ title: e.target.value })}
+          placeholder="e.g. First dance"
+          error={errors.title}
+        />
 
-      <label htmlFor="blk-title" className="sr-only">
-        Title
-      </label>
-      <input
-        id="blk-title"
-        ref={titleRef}
-        value={form.title}
-        onChange={(e) => set({ title: e.target.value })}
-        onKeyDown={(e) => e.key === 'Enter' && save()}
-        placeholder="Add title"
-        className="w-full border-0 border-b-2 border-line bg-transparent px-0 pb-1.5 text-title font-light text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
-      />
-
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <div>
-          <label htmlFor="blk-start" className="mb-1 block text-label font-medium text-ink">
-            Starts
-          </label>
-          <input
+        <div className="grid grid-cols-2 gap-2">
+          <TextInput
+            label="Starts"
             id="blk-start"
             type="time"
             value={toInputValue(form.time)}
-            onChange={(e) => fromInputValue(e.target.value) && set({ time: fromInputValue(e.target.value) })}
-            className={INPUT}
+            onChange={(e) => set({ time: fromInputValue(e.target.value) || '' })}
+            error={errors.time}
           />
-        </div>
-        <div>
-          <label htmlFor="blk-end" className="mb-1 block text-label font-medium text-ink">
-            Ends
-          </label>
-          <input
+          <TextInput
+            label="Ends"
             id="blk-end"
             type="time"
             value={toInputValue(form.end)}
-            onChange={(e) => fromInputValue(e.target.value) && set({ end: fromInputValue(e.target.value) })}
-            className={INPUT}
+            onChange={(e) => set({ end: fromInputValue(e.target.value) || '' })}
+            error={errors.end}
           />
         </div>
-      </div>
 
-      <label className="mt-3 flex items-start gap-2.5 rounded-md bg-surface-sunken/50 px-3 py-2.5">
-        <input
-          type="checkbox"
-          checked={form.needsStaff}
-          onChange={(e) => set({ needsStaff: e.target.checked })}
-          className="mt-0.5 h-4 w-4 accent-accent"
-        />
-        <span>
-          <span className="block text-small font-medium text-ink">Needs staff</span>
-          <span className="block text-label text-ink-muted">Shows up in the Staffing Planner so you can fill it.</span>
-        </span>
-      </label>
-
-      <div className="mt-3">
-        <label htmlFor="blk-note" className="mb-1 block text-label font-medium text-ink">
-          Note
+        <label className="flex items-start gap-2.5 rounded-sm border border-line px-3 py-2.5">
+          <input
+            type="checkbox"
+            checked={form.needsStaff}
+            onChange={(e) => set({ needsStaff: e.target.checked })}
+            className="mt-0.5 h-4 w-4 accent-[var(--ink)]"
+          />
+          <span>
+            <span className="block text-small font-medium text-ink">Needs staff</span>
+            <span className="block text-small text-ink-muted">Shows up in the Staffing Planner so you can fill it.</span>
+          </span>
         </label>
-        <textarea id="blk-note" rows={2} value={form.note} onChange={(e) => set({ note: e.target.value })} placeholder="Optional" className={INPUT} />
-      </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2">
-        {isNew ? (
-          <span />
-        ) : (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="inline-flex h-9 items-center gap-1.5 rounded-sm px-3 text-small font-medium text-status-now transition-colors hover:bg-status-now-soft"
-          >
-            <Icon name="trash" size={15} />
-            Delete
-          </button>
-        )}
-        <Button variant="primary" onClick={save}>
+        <Textarea
+          label="Note"
+          id="blk-note"
+          rows={2}
+          value={form.note}
+          onChange={(e) => set({ note: e.target.value })}
+          placeholder="Optional"
+        />
+
+        {/* Enter in a field saves, like the Save button. */}
+        <button type="submit" className="sr-only" tabIndex={-1}>
           Save
-        </Button>
-      </div>
-    </div>
+        </button>
+      </form>
+    </Modal>
   )
 }
 
@@ -233,28 +209,24 @@ export default function RunOfShowPage({ params }) {
   const height = ((hi - lo) / 60) * PX
   const hours = Array.from({ length: (hi - lo) / 60 + 1 }, (_, i) => lo / 60 + i)
 
+  const { toast } = useStore()
+  const { confirm, dialog } = useConfirm()
   const gridRef = useRef(null)
   const dragRef = useRef(null)
   const [preview, setPreview] = useState(null) // { id|'draft', s, e } while dragging
   const [editor, setEditor] = useState(null) // { id|null, values }
-  const [undo, setUndo] = useState(null)
-  const undoTimer = useRef(null)
   const rowsRef = useRef(rows)
   rowsRef.current = rows
 
+  /** Save the rows; with a message, say so in a toast that can undo it. */
   const commit = useCallback(
     (next, message) => {
       const before = rowsRef.current
       setRows(id, sortRows(next))
-      if (message) {
-        setUndo({ rows: before, message })
-        clearTimeout(undoTimer.current)
-        undoTimer.current = setTimeout(() => setUndo(null), 7000)
-      }
+      if (message) toast(message, 'done', { actions: [{ label: 'Undo', onClick: () => setRows(id, before) }] })
     },
-    [id, setRows]
+    [id, setRows, toast]
   )
-  useEffect(() => () => clearTimeout(undoTimer.current), [])
 
   const minuteAt = (clientY) => {
     const box = gridRef.current.getBoundingClientRect()
@@ -265,9 +237,22 @@ export default function RunOfShowPage({ params }) {
     setEditor({ id: null, values: { id: `${id}-r-${Date.now().toString(36)}`, time: clockLabel(s), end: clockLabel(e), title: '', note: '', needsStaff: false } })
   }
 
+  const openEdit = (r) => setEditor({ id: r.id, values: { ...r, end: r.end || clockLabel(span(r).e), note: r.note || '' } })
+
+  /** Keyboard and button route to a new block: the first free hour after the last one. */
+  const addBlock = () => {
+    const last = rows.reduce((m, r) => Math.max(m, span(r).e), lo + 8 * 60)
+    const s = clamp(Math.ceil(last / 30) * 30, lo, hi - DEFAULT_LEN)
+    setPreview({ id: 'draft', s, e: s + DEFAULT_LEN })
+    openNew(s, s + DEFAULT_LEN)
+  }
+
   const saveEditor = (values) => {
     const exists = rows.some((r) => r.id === values.id)
-    commit(exists ? rows.map((r) => (r.id === values.id ? { ...r, ...values } : r)) : [...rows, values])
+    commit(
+      exists ? rows.map((r) => (r.id === values.id ? { ...r, ...values } : r)) : [...rows, values],
+      exists ? `Saved “${values.title}”.` : `Added “${values.title}” at ${values.time}.`
+    )
     setEditor(null)
     setPreview(null)
   }
@@ -276,22 +261,22 @@ export default function RunOfShowPage({ params }) {
     const row = rows.find((r) => r.id === rowId)
     commit(
       rows.filter((r) => r.id !== rowId),
-      `Deleted “${row?.title || 'block'}”`
+      `Deleted “${row?.title || 'block'}”.`
     )
     setEditor(null)
   }
 
-  // Delete key removes the open block, as in Google Calendar.
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key !== 'Delete' || !editor?.id) return
-      const tag = document.activeElement?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      deleteRow(editor.id)
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  })
+  const askReset = () =>
+    confirm({
+      title: 'Reset the run of show?',
+      body: 'Every change to this event’s run of show goes back to the sample data, including blocks you added or deleted. This can’t be undone.',
+      confirmLabel: 'Reset to sample',
+      danger: true,
+      onConfirm: () => {
+        resetEvent(id)
+        toast('The run of show is back to the sample data.')
+      }
+    })
 
   // ---- pointer: create, move, resize ----
   const onPointerDown = (e) => {
@@ -350,7 +335,7 @@ export default function RunOfShowPage({ params }) {
           openNew(s, s + DEFAULT_LEN)
         } else {
           const r = rowsRef.current.find((x) => x.id === d.id)
-          if (r) setEditor({ id: r.id, values: { ...r, end: r.end || clockLabel(span(r).e), note: r.note || '' } })
+          if (r) openEdit(r)
         }
         return
       }
@@ -363,7 +348,7 @@ export default function RunOfShowPage({ params }) {
         setPreview(null)
         commit(
           rowsRef.current.map((r) => (r.id === d.id ? { ...r, time: clockLabel(s), end: clockLabel(end) } : r)),
-          d.kind === 'move' ? 'Block moved' : 'Block resized'
+          d.kind === 'move' ? 'Block moved.' : 'Block resized.'
         )
       }
     }
@@ -398,9 +383,21 @@ export default function RunOfShowPage({ params }) {
       <div
         key={row.id}
         data-row={row.id}
+        role="button"
+        tabIndex={0}
+        aria-label={`${row.title || '(No title)'}, ${range(s, e)}${row.needsStaff ? ', needs staff' : ''}. Enter to edit, Delete to remove.`}
+        onKeyDown={(ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault()
+            openEdit(row)
+          } else if (ev.key === 'Delete' || ev.key === 'Backspace') {
+            ev.preventDefault()
+            deleteRow(row.id)
+          }
+        }}
         title={`${row.title || '(No title)'}, ${range(s, e)}`}
         className={[
-          'absolute cursor-grab select-none overflow-hidden rounded-md border px-2 py-1 text-left text-label leading-tight transition-shadow active:cursor-grabbing',
+          'absolute cursor-grab select-none overflow-hidden rounded-md border px-2 py-1 text-left text-label leading-tight transition-shadow active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent',
           tone === 'urgent' ? 'border-status-now-soft bg-status-now-soft text-status-now' : '',
           tone === 'staff' ? 'border-accent bg-surface text-accent' : '',
           tone === 'plain' ? 'border-line bg-surface-sunken text-ink' : '',
@@ -432,25 +429,23 @@ export default function RunOfShowPage({ params }) {
       <Card
         title="Run of show"
         icon="clock"
-        subtitle={`${rows.length} blocks · ${staffed} need staff and appear in the Staffing Planner. Click or drag on the grid to add one.`}
+        subtitle={
+          <>
+            {rows.length} blocks · {staffed} need staff and appear in the{' '}
+            <Link href={`/staffing/${id}`} className="text-ink underline underline-offset-4 hover:text-accent">
+              Staffing Planner
+            </Link>
+            . Click or drag on the grid to add a block; drag a block to move it.
+          </>
+        }
         action={
           <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={() => resetEvent(id)}>
+            <Button size="sm" variant="ghost" onClick={askReset}>
               Reset to sample
             </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              data-guide="run-create"
-              onClick={() => {
-                const last = rows.reduce((m, r) => Math.max(m, span(r).e), lo + 8 * 60)
-                const s = clamp(Math.ceil(last / 30) * 30, lo, hi - DEFAULT_LEN)
-                setPreview({ id: 'draft', s, e: s + DEFAULT_LEN })
-                openNew(s, s + DEFAULT_LEN)
-              }}
-            >
+            <Button size="sm" variant="primary" data-guide="run-create" onClick={addBlock}>
               <Icon name="plus" size={13} />
-              Create
+              Add block
             </Button>
           </div>
         }
@@ -472,8 +467,8 @@ export default function RunOfShowPage({ params }) {
             onPointerDown={onPointerDown}
             className="relative flex-1 cursor-cell touch-none border-l border-line"
             style={{ height }}
-            role="application"
-            aria-label="Run of show day view. Click or drag to add a block."
+            role="group"
+            aria-label="Run of show day view. Click or drag on empty space to add a block."
           >
             {hours.map((h) => (
               <div key={h} className="pointer-events-none absolute inset-x-0 border-t border-line" style={{ top: ((h * 60 - lo) / 60) * PX }} />
@@ -487,7 +482,7 @@ export default function RunOfShowPage({ params }) {
             {draft && (
               <div
                 data-row="draft"
-                className="pointer-events-none absolute inset-x-1 z-20 overflow-hidden rounded-md border-2 border-dashed border-accent bg-surface-sunken px-2 py-1 text-label font-medium text-accent"
+                className="pointer-events-none absolute inset-x-1 z-20 overflow-hidden rounded-sm border-2 border-dashed border-accent bg-surface-sunken px-2 py-1 text-label font-medium text-accent"
                 style={{ top: ((draft.s - lo) / 60) * PX + 1, height: Math.max(((draft.e - draft.s) / 60) * PX, 20) - 2 }}
               >
                 {(editor?.values.title || '(No title)') + ' · ' + range(draft.s, draft.e)}
@@ -502,28 +497,13 @@ export default function RunOfShowPage({ params }) {
           key={editor.values.id}
           value={editor.values}
           isNew={!editor.id}
-          anchorId={editor.id || 'draft'}
           onSave={saveEditor}
           onDelete={() => deleteRow(editor.id)}
           onClose={closeEditor}
         />
       )}
 
-      {undo && (
-        <div role="status" className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-md bg-ink px-4 py-3 text-small font-medium text-on-ink shadow-overlay">
-          <span>{undo.message}</span>
-          <button
-            type="button"
-            onClick={() => {
-              setRows(id, undo.rows)
-              setUndo(null)
-            }}
-            className="rounded-sm px-2 py-0.5 font-medium text-on-ink underline underline-offset-4 hover:no-underline"
-          >
-            Undo
-          </button>
-        </div>
-      )}
+      {dialog}
     </div>
   )
 }

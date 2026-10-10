@@ -1,10 +1,11 @@
 'use client'
 
-// Change times (spec §B.6) and the small "Mark as OK" dialog. Both undoable.
+// Change times (spec §B.6) and the small "It's fine" dialog, which records
+// why a conflict is acceptable. Both undoable.
 
 import { useState } from 'react'
 import { Modal } from '@/components/ui/domain'
-import { Button } from '@/components/ui/primitives'
+import { Button, TextInput } from '@/components/ui/primitives'
 import { WORLD } from '@/lib/staffing/adapter'
 import { openIssues, roleBlocks, staffById } from '@/lib/staffing/derive'
 import { useStaffing2 } from '@/lib/staffing/store'
@@ -44,10 +45,10 @@ export function ChangeTimes({ requestId, onClose }) {
     >
       <div className="space-y-4">
         <p className="text-small text-ink-muted">
-          {r.role} at the {ev.name}. {sent ? 'They have already been texted, so this becomes a change to send.' : 'Nothing has been sent yet.'}
+          {r.role} at the {ev.name}. {sent ? 'They already got a text, so after saving, send them the new times.' : 'Nothing has been sent yet.'}
         </p>
         <div>
-          <span className="eyebrow mb-1.5 block text-ink">Working</span>
+          <span className="mb-1.5 block text-small text-ink-muted">Working</span>
           <BlockToggles blocks={options} selected={blocks} onChange={setBlocks} />
         </div>
         <CallTimeSelect id="change-call" startH={startH} value={offset} onChange={setOffset} />
@@ -67,7 +68,7 @@ export function MarkOkDialog({ requestId, onClose }) {
     <Modal
       open
       onClose={onClose}
-      title={`Why is this OK for ${name}?`}
+      title={`Why is this fine for ${name}?`}
       labelledBy="mark-ok-title"
       footer={
         <>
@@ -80,7 +81,7 @@ export function MarkOkDialog({ requestId, onClose }) {
               onClose()
             }}
           >
-            Mark as OK
+            It&apos;s fine
           </Button>
         </>
       }
@@ -91,14 +92,13 @@ export function MarkOkDialog({ requestId, onClose }) {
         ))}
       </ul>
       <PickChips options={['Checked with them', 'Times can flex', 'Renewal in progress']} value={reason} onChange={setReason} label="Quick reasons" />
-      <label htmlFor="ok-reason" className="eyebrow mt-3 block text-ink">
-        Reason
-      </label>
-      <input
+      <TextInput
+        label="Reason"
         id="ok-reason"
+        className="mt-3"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        className="mt-1.5 block w-full rounded-sm border border-line-strong bg-surface px-3 py-2 text-body text-ink focus:border-accent"
+        hint="Pick one above or type your own. The warning stays visible as “You said it's fine”."
       />
     </Modal>
   )

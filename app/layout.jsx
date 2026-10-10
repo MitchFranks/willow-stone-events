@@ -2,6 +2,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { StoreProvider } from '@/lib/store'
+import { Staffing2Provider } from '@/lib/staffing/store'
 import { TimelineEditsProvider } from '@/lib/timelineEdits'
 import { OnboardingProvider } from '@/components/onboarding/OnboardingProvider'
 
@@ -15,7 +16,7 @@ export const metadata = {
     'Clickable prototype of an operations platform for wedding venues. Simulated data.',
   icons: {
     icon:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231c1b19'/%3E%3Ctext x='16' y='22.5' font-family='Helvetica,Arial,sans-serif' font-size='17' font-weight='300' fill='%23faf9f6' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E"
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231b1c1e'/%3E%3Ctext x='16' y='22.5' font-family='Helvetica,Arial,sans-serif' font-size='17' font-weight='300' fill='%23fafafa' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E"
   }
 }
 
@@ -24,9 +25,12 @@ export default function RootLayout({ children }) {
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>
         <TimelineEditsProvider>
-          <StoreProvider>
-            <OnboardingProvider>{children}</OnboardingProvider>
-          </StoreProvider>
+          {/* The planner sits outside the store so Up Next can be derived from it. */}
+          <Staffing2Provider>
+            <StoreProvider>
+              <OnboardingProvider>{children}</OnboardingProvider>
+            </StoreProvider>
+          </Staffing2Provider>
         </TimelineEditsProvider>
       </body>
     </html>

@@ -3,67 +3,59 @@
 // ---------------------------------------------------------------------------
 // Prototype state engine.
 //
-// The whole point of this file: nothing in the Up Next list is
-// hard-coded. Attention items are DERIVED from the current state of assignments,
-// tasks, messages and documents. So when Jake declines an assignment, an open position
-// appears, and an attention item appears with it. Assign a replacement and all
-// three disappear together. The chain is real, not simulated per-screen.
+// STAFFING comes from the Staffing Planner's state (lib/staffing/store.jsx):
+// open spots, event coverage and unsent texts are derived from its requests,
+// so asking, sending and a reply in the planner clear the matching Up Next
+// item. Tasks, messages, documents and payments live here.
 //
-//   assignments  ->  open positions  ->  attention items
-//   tasks        ->  attention items
-//   messages     ->  attention items
-//   documents    ->  attention items
+// The whole point of this file: nothing in the Up Next list is hard-coded.
+// Up Next items are DERIVED from the current state:
+//
+//   planner requests  ->  open spots  ->  Up Next items
+//   tasks             ->  Up Next items
+//   messages          ->  Up Next items
+//   documents         ->  Up Next items
+//   payments          ->  Up Next items
 //
 // State persists to localStorage so a tester can move between screens (and
-// reload) without losing their progress. "Reset prototype" clears it.
+// reload) without losing their progress. "Reset prototype data" clears it.
 // ---------------------------------------------------------------------------
 
 import { useTimelineVersion } from '@/lib/timelineEdits'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { events, eventById, seedAssignments, blockById, daysOutLabel } from './mock/events.js'
-import { documents, messages, tasks } from './mock/records.js'
-import { isAvailable, pluralRole, staff, staffById } from './mock/staff.js'
+import { events, eventById, daysOutLabel } from './mock/events.js'
+import { documents, messages, money, payments, tasks } from './mock/records.js'
+import { pluralRole } from './mock/staff.js'
+import { useStaffing2 } from './staffing/store'
+import { changed, coverage, requestList, rolesOf, staffById as plannerStaffById } from './staffing/derive'
 
 const StoreContext = createContext(null)
 
-/** Open-position ids are `${blockId}--${role-slug}`; the slug is derived from the role name. */
-export function positionIdFor(blockId, role) {
-  return `${blockId}--${role.replace(/\s+/g, '-').toLowerCase()}`
-}
-
-export function parsePositionId(positionId) {
-  const [blockId, slug] = positionId.split('--')
-  const found = blockById(blockId)
-  const requirement = found?.block.requirements.find(
-    (r) => r.role.replace(/\s+/g, '-').toLowerCase() === slug
-  )
-  return { blockId, role: requirement ? requirement.role : null }
-}
-const STORAGE_KEY = 'vue-lowfi-prototype-v5'
+const STORAGE_KEY = 'vue-lowfi-prototype-v6'
 
 function initialState() {
   return {
-    // assignmentId -> { blockId, staffId, role, status, declineReason, overridden, warning }
-    // status: draft (assigned, not yet sent) | pending | accepted | declined
-    assignments: Object.fromEntries(
-      seedAssignments.map((a) => [`${a.blockId}--${a.staffId}`, { ...a, id: `${a.blockId}--${a.staffId}` }])
-    ),
     doneTaskIds: tasks.filter((t) => t.done).map((t) => t.id),
     repliedMessageIds: [],
     readMessageIds: [],
     signedDocumentIds: [],
-    publishedEventIds: ['evt-1001'],
-    // positionId -> { staffIds }  who an open position was offered to
-    offers: {},
-    dismissedAttentionIds: [],
-    seenIntro: false
+    // `${eventId}:${paymentId}` recorded as paid in the prototype
+    paidPaymentIds: [],
+    // Up Next item ids the manager chose to hide. Staffing items can't be hidden.
+    dismissedAttentionIds: []
   }
+}
+
+/** "1 open spot", "3 open spots". The one phrasing for unfilled roles. */
+function openSpotsText(n) {
+  return `${n} open spot${n === 1 ? '' : 's'}`
 }
 
 export function StoreProvider({ children }) {
   const [state, setState] = useState(initialState)
   const [toasts, setToasts] = useState([])
   const [hydrated, setHydrated] = useState(false)
+  const { state: planner, setGuarantee } = useStaffing2()
 
   // Rehydrate after mount so the server-rendered HTML and the first couple
   // render match (static export would otherwise warn about a mismatch).
@@ -88,119 +80,19 @@ export function StoreProvider({ children }) {
 
   // ---- feedback -----------------------------------------------------------
 
-  const toast = useCallback((message, tone = 'done') => {
+  /**
+   * toast(message, tone?, { actions?, small? }). Toasts with actions (Undo)
+   * stay up longer so there is time to use them.
+   */
+  const toast = useCallback((message, tone = 'done', opts = {}) => {
     const id = Math.random().toString(36).slice(2)
-    setToasts((t) => [...t, { id, message, tone }])
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000)
+    setToasts((t) => [...t, { id, message, tone, actions: opts.actions, small: opts.small }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), opts.actions?.length ? 8000 : 4000)
   }, [])
 
   const dismissToast = useCallback((id) => setToasts((t) => t.filter((x) => x.id !== id)), [])
 
   // ---- actions ------------------------------------------------------------
-
-  const setAssignmentStatus = useCallback(
-    (assignmentId, status, declineReason) => {
-      setState((s) => {
-        const existing = s.assignments[assignmentId]
-        if (!existing) return s
-        // Once someone accepts, any outstanding offer for that position is moot.
-        let offers = s.offers
-        if (status === 'accepted') {
-          const positionId = positionIdFor(existing.blockId, existing.role)
-          if (offers[positionId]) {
-            offers = { ...offers }
-            delete offers[positionId]
-          }
-        }
-        return {
-          ...s,
-          offers,
-          assignments: {
-            ...s.assignments,
-            [assignmentId]: { ...existing, status, declineReason: declineReason ?? existing.declineReason }
-          }
-        }
-      })
-    },
-    []
-  )
-
-  /**
-   * Assigning saves a DRAFT ("Not sent"). Nothing is confirmed, and the open
-   * position stays open, until the schedule is published and the person accepts.
-   * A soft warning can be overridden; the override is kept so it stays visible.
-   */
-  const assignStaff = useCallback((blockId, staffId, role, opts = {}) => {
-    const id = `${blockId}--${staffId}`
-    setState((s) => ({
-      ...s,
-      assignments: {
-        ...s.assignments,
-        [id]: {
-          id,
-          blockId,
-          staffId,
-          role,
-          status: opts.status || 'draft',
-          ...(opts.overridden ? { overridden: true, warning: opts.warning } : {})
-        }
-      }
-    }))
-  }, [])
-
-  /** Offer an open position to several eligible people. Nothing is assigned until one claims it. */
-  const offerPosition = useCallback((positionId, staffIds) => {
-    setState((s) => ({ ...s, offers: { ...s.offers, [positionId]: { staffIds } } }))
-  }, [])
-
-  /** Simulates one offered person claiming the position: they become an accepted assignment. */
-  const claimOffer = useCallback((positionId, staffId) => {
-    const { blockId, role } = parsePositionId(positionId)
-    if (!blockId || !role) return
-    const id = `${blockId}--${staffId}`
-    setState((s) => {
-      const offers = { ...s.offers }
-      delete offers[positionId]
-      return {
-        ...s,
-        offers,
-        assignments: { ...s.assignments, [id]: { id, blockId, staffId, role, status: 'accepted' } }
-      }
-    })
-  }, [])
-
-  /** Copy staffing from another event onto blocks that have nobody yet, as drafts. */
-  const copyStaffing = useCallback((fromEventId, toEventId) => {
-    const from = eventById(fromEventId)
-    const to = eventById(toEventId)
-    if (!from || !to) return 0
-    let copied = 0
-    setState((s) => {
-      const next = { ...s.assignments }
-      for (const block of to.blocks) {
-        const hasPeople = Object.values(next).some((a) => a.blockId === block.id && a.status !== 'declined')
-        if (hasPeople) continue
-        const source = from.blocks.find((b) => b.name === block.name)
-        if (!source) continue
-        for (const a of Object.values(s.assignments)) {
-          if (a.blockId !== source.id || a.status === 'declined') continue
-          const id = `${block.id}--${a.staffId}`
-          next[id] = { id, blockId: block.id, staffId: a.staffId, role: a.role, status: 'draft' }
-          copied += 1
-        }
-      }
-      return { ...s, assignments: next }
-    })
-    return copied
-  }, [])
-
-  const removeAssignment = useCallback((assignmentId) => {
-    setState((s) => {
-      const next = { ...s.assignments }
-      delete next[assignmentId]
-      return { ...s, assignments: next }
-    })
-  }, [])
 
   const toggleTask = useCallback((taskId) => {
     setState((s) => ({
@@ -210,6 +102,15 @@ export function StoreProvider({ children }) {
         : [...s.doneTaskIds, taskId]
     }))
   }, [])
+
+  /** Submit the guaranteed guest count: sets it on the event and completes the task. */
+  const submitGuestCount = useCallback(
+    (taskId, eventId, count) => {
+      setGuarantee(eventId, count)
+      setState((s) => (s.doneTaskIds.includes(taskId) ? s : { ...s, doneTaskIds: [...s.doneTaskIds, taskId] }))
+    },
+    [setGuarantee]
+  )
 
   const markReplied = useCallback((messageId) => {
     setState((s) => ({
@@ -236,30 +137,31 @@ export function StoreProvider({ children }) {
     }))
   }, [])
 
-  /** Publish: every draft ("Not sent") on the event becomes pending, i.e. staff are asked. */
-  const publishSchedule = useCallback((eventId) => {
-    setState((s) => {
-      const event = eventById(eventId)
-      const blockIds = event ? event.blocks.map((b) => b.id) : []
-      const assignments = { ...s.assignments }
-      for (const a of Object.values(s.assignments)) {
-        if (blockIds.includes(a.blockId) && a.status === 'draft') assignments[a.id] = { ...a, status: 'pending' }
-      }
-      return {
-        ...s,
-        assignments,
-        publishedEventIds: s.publishedEventIds.includes(eventId)
-          ? s.publishedEventIds
-          : [...s.publishedEventIds, eventId]
-      }
-    })
+  const unsignDocument = useCallback((docId) => {
+    setState((s) => ({ ...s, signedDocumentIds: s.signedDocumentIds.filter((d) => d !== docId) }))
+  }, [])
+
+  const recordPayment = useCallback((eventId, paymentId) => {
+    const key = `${eventId}:${paymentId}`
+    setState((s) => (s.paidPaymentIds.includes(key) ? s : { ...s, paidPaymentIds: [...s.paidPaymentIds, key] }))
+  }, [])
+
+  const undoPayment = useCallback((eventId, paymentId) => {
+    const key = `${eventId}:${paymentId}`
+    setState((s) => ({ ...s, paidPaymentIds: s.paidPaymentIds.filter((k) => k !== key) }))
   }, [])
 
   const dismissAttention = useCallback((id) => {
-    setState((s) => ({ ...s, dismissedAttentionIds: [...s.dismissedAttentionIds, id] }))
+    setState((s) =>
+      s.dismissedAttentionIds.includes(id) ? s : { ...s, dismissedAttentionIds: [...s.dismissedAttentionIds, id] }
+    )
   }, [])
 
-  const setSeenIntro = useCallback((seen) => setState((s) => ({ ...s, seenIntro: seen })), [])
+  const restoreAttention = useCallback((id) => {
+    setState((s) => ({ ...s, dismissedAttentionIds: s.dismissedAttentionIds.filter((x) => x !== id) }))
+  }, [])
+
+  const restoreAllAttention = useCallback(() => setState((s) => ({ ...s, dismissedAttentionIds: [] })), [])
 
   const reset = useCallback(() => {
     setState(initialState())
@@ -270,125 +172,45 @@ export function StoreProvider({ children }) {
     }
   }, [])
 
-  // ---- derived: assignments ----------------------------------------------------
-
   const timelineVersion = useTimelineVersion()
-  const assignmentList = useMemo(() => Object.values(state.assignments), [state.assignments, timelineVersion])
 
-  const assignmentsForBlock = useCallback(
-    (blockId) => assignmentList.filter((a) => a.blockId === blockId),
-    [assignmentList]
-  )
-
-  const assignmentsForStaff = useCallback(
-    (staffId) =>
-      assignmentList
-        .filter((a) => a.staffId === staffId)
-        .map((a) => {
-          const found = blockById(a.blockId)
-          return found ? { ...a, event: found.event, block: found.block } : null
-        })
-        .filter(Boolean),
-    [assignmentList]
-  )
-
-  // ---- derived: open positions --------------------------------------------
+  // ---- derived: open spots ------------------------------------------------
   //
-  // An open position is a (block, role) pair where accepted assignments < required.
-  // Pending assignments deliberately do NOT count as covered — an unanswered
-  // assignment request is not coverage, and that distinction is the point of the
-  // accept/decline loop.
+  // An open spot is a (block, role) pair with fewer confirmed people than it
+  // needs. Someone who has been asked but not yet said yes does NOT count as
+  // covered: an unanswered text is not coverage.
 
   const openPositions = useMemo(() => {
     const out = []
     for (const event of events) {
       for (const block of event.blocks) {
-        const assigned = assignmentList.filter((a) => a.blockId === block.id)
-        for (const requirement of block.requirements) {
-          const accepted = assigned.filter((a) => a.role === requirement.role && a.status === 'accepted').length
-          const pending = assigned.filter((a) => a.role === requirement.role && a.status === 'pending').length
-          const draft = assigned.filter((a) => a.role === requirement.role && a.status === 'draft').length
-          const declined = assigned.filter((a) => a.role === requirement.role && a.status === 'declined')
-          const short = requirement.count - accepted
-          if (short > 0) {
-            out.push({
-              id: `${block.id}--${requirement.role.replace(/\s+/g, '-').toLowerCase()}`,
-              eventId: event.id,
-              event,
-              block,
-              role: requirement.role,
-              required: requirement.count,
-              accepted,
-              pending,
-              draft,
-              short,
-              declinedBy: declined.map((d) => staffById(d.staffId)).filter(Boolean),
-              urgency: event.primary ? 'urgent' : 'warn'
-            })
-          }
+        for (const role of rolesOf(block, planner)) {
+          const c = coverage(event.id, block, role, planner)
+          if (c.gap <= 0) continue
+          const declined = requestList(planner).filter(
+            (r) => r.eventId === event.id && r.role === role && r.status === 'declined' && r.blockIds.includes(block.id)
+          )
+          out.push({
+            id: `${block.id}--${role.replace(/\s+/g, '-').toLowerCase()}`,
+            eventId: event.id,
+            event,
+            block,
+            role,
+            required: c.need,
+            accepted: c.confirmed,
+            pending: c.waiting,
+            draft: c.notSent,
+            short: c.gap,
+            // Nobody asked yet for this many of the open spots.
+            toFind: c.toFind,
+            declinedBy: declined.map((r) => plannerStaffById(r.staffId)).filter(Boolean),
+            urgency: event.primary ? 'urgent' : 'warn'
+          })
         }
       }
     }
     return out
-  }, [assignmentList])
-
-  const openPositionById = useCallback((id) => openPositions.find((g) => g.id === id) || null, [openPositions])
-
-  /**
-   * Who could fill this slot? Every person gets a list of SOFT warnings (never a
-   * block): outside their availability, double-booked, declined this before,
-   * or usually a different role. The manager can always assign anyway.
-   */
-  const candidatesForSlot = useCallback(
-    (block, role, { allRoles = false } = {}) => {
-      const found = blockById(block.id)
-      if (!found) return []
-      const { event } = found
-      const onBlock = assignmentList.filter((a) => a.blockId === block.id && a.status !== 'declined').map((a) => a.staffId)
-
-      return staff
-        .filter((person) => allRoles || person.role === role)
-        .map((person) => {
-          const warnings = []
-          const windows = person.availability[event.day] || []
-          if (!isAvailable(person, event.day, block.start, block.end)) {
-            warnings.push({
-              kind: 'availability',
-              text: windows.length
-                ? `Free ${windows.map((w) => `${hourLabel(w.start)}–${hourLabel(w.end)}`).join(', ')} only`
-                : `Not available ${event.day}`
-            })
-          }
-          const clash = assignmentList
-            .filter((a) => a.staffId === person.id && a.status !== 'declined')
-            .map((a) => blockById(a.blockId))
-            .filter(Boolean)
-            .find(
-              ({ event: e, block: s }) =>
-                e.dateKey === event.dateKey && s.id !== block.id && s.start < block.end && s.end > block.start
-            )
-          if (clash) {
-            warnings.push({
-              kind: 'overlap',
-              text: `${clash.block.name} at ${clash.event.name}, ${hourLabel(clash.block.start)}–${hourLabel(clash.block.end)}`
-            })
-          }
-          const previous = state.assignments[`${block.id}--${person.id}`]
-          if (previous && previous.status === 'declined') {
-            warnings.push({ kind: 'declinedBefore', text: 'Declined this timeline block' })
-          }
-          if (person.role !== role) warnings.push({ kind: 'otherRole', text: `Usually works as ${person.role}` })
-          return { person, warnings, eligible: warnings.length === 0, alreadyOnBlock: onBlock.includes(person.id) }
-        })
-        .sort(
-          (x, y) =>
-            Number(x.alreadyOnBlock) - Number(y.alreadyOnBlock) ||
-            x.warnings.length - y.warnings.length ||
-            Number(y.person.role === role) - Number(x.person.role === role)
-        )
-    },
-    [assignmentList, state.assignments]
-  )
+  }, [planner, timelineVersion])
 
   /** Coverage summary for a whole event — drives the staffing badge everywhere. */
   const coverageForEvent = useCallback(
@@ -400,20 +222,17 @@ export function StoreProvider({ children }) {
       let pending = 0
       let draft = 0
       for (const block of event.blocks) {
-        const assigned = assignmentList.filter((a) => a.blockId === block.id)
-        for (const requirement of block.requirements) {
-          required += requirement.count
-          filled += Math.min(
-            requirement.count,
-            assigned.filter((a) => a.role === requirement.role && a.status === 'accepted').length
-          )
-          pending += assigned.filter((a) => a.role === requirement.role && a.status === 'pending').length
-          draft += assigned.filter((a) => a.role === requirement.role && a.status === 'draft').length
+        for (const role of rolesOf(block, planner)) {
+          const c = coverage(event.id, block, role, planner)
+          required += c.need
+          filled += c.filled
+          pending += c.waiting
+          draft += c.notSent
         }
       }
       return { required, filled, pending, draft, short: required - filled, complete: filled >= required }
     },
-    [assignmentList]
+    [planner]
   )
 
   // ---- derived: tasks / messages / documents ------------------------------
@@ -441,55 +260,93 @@ export function StoreProvider({ children }) {
     [state.signedDocumentIds]
   )
 
+  /** Payment schedule for an event, with prototype-recorded payments applied. */
+  const paymentsForEvent = useCallback(
+    (eventId) => {
+      const plan = payments[eventId]
+      if (!plan) return null
+      let paid = plan.paid
+      const schedule = plan.schedule.map((p) => {
+        if (p.state !== 'paid' && state.paidPaymentIds.includes(`${eventId}:${p.id}`)) {
+          paid += p.amount
+          return { ...p, state: 'paid', when: 'Recorded today', recordedHere: true }
+        }
+        return p
+      })
+      return { ...plan, paid, schedule }
+    },
+    [state.paidPaymentIds]
+  )
+
   // ---- derived: ATTENTION -------------------------------------------------
   //
   // Everything above funnels into here. Each item answers the four questions
   // the product is built around: what happened, which event, why it matters,
   // what you can do next.
 
-  const attention = useMemo(() => {
+  const allAttention = useMemo(() => {
     const items = []
 
-    // 1. Open positions
-    for (const openPosition of openPositions) {
-      const who = openPosition.declinedBy[0]
-      items.push({
-        id: `openPosition:${openPosition.id}`,
+    // 1. Open spots. While nobody has been asked for a spot it is something to
+    //    do; once everyone needed has been asked it is only something to wait on.
+    for (const spot of openPositions) {
+      const who = spot.declinedBy[0]
+      const spotLink = `/staffing/${spot.event.id}?block=${spot.block.id}&role=${encodeURIComponent(spot.role)}`
+      const base = {
         kind: 'staffing',
-        tone: openPosition.urgency,
-        title: `${openPosition.block.name} needs ${openPosition.short} more ${pluralRole(openPosition.role, openPosition.short)} · ${openPosition.event.name}`,
-        what: who
-          ? `${who.name} declined the ${openPosition.block.name.toLowerCase()} assignment.`
-          : `${openPosition.block.name} has ${openPosition.accepted} of ${openPosition.required} ${openPosition.role} confirmed.`,
-        why: openPosition.event.primary
-          ? `${openPosition.event.name} is ${daysOutLabel(openPosition.event)}. Filling it keeps this timeline block fully staffed.`
-          : `${openPosition.event.name} is ${daysOutLabel(openPosition.event)}.`,
-        eventId: openPosition.event.id,
-        eventName: openPosition.event.name,
-        meta: `${openPosition.block.name} · ${hourLabel(openPosition.block.start)}–${hourLabel(openPosition.block.end)}`,
-        actionLabel: 'Fill position',
-        href: `/staffing/${openPosition.event.id}?block=${openPosition.block.id}&role=${encodeURIComponent(openPosition.role)}`
-      })
+        eventId: spot.event.id,
+        eventName: spot.event.name,
+        meta: `${spot.block.name} · ${hourLabel(spot.block.start)}–${hourLabel(spot.block.end)}`,
+        dismissible: false
+      }
+      if (spot.toFind > 0) {
+        items.push({
+          ...base,
+          id: `openPosition:${spot.id}`,
+          tone: spot.urgency,
+          title: `${spot.block.name}: ${openSpotsText(spot.short)} for ${pluralRole(spot.role, spot.short)}`,
+          what: who
+            ? `${who.name} can't make the ${spot.block.name.toLowerCase()} shift.`
+            : `${spot.accepted} of ${spot.required} ${pluralRole(spot.role, spot.required)} confirmed.`,
+          why: spot.event.primary
+            ? `${daysOutLabel(spot.event)}. Until it is filled, this block runs short-staffed.`
+            : `${daysOutLabel(spot.event)}.`,
+          actionLabel: spot.toFind === 1 ? 'Fill spot' : 'Fill spots',
+          href: `${spotLink}&ask=1`
+        })
+      } else if (spot.pending > 0) {
+        items.push({
+          ...base,
+          id: `waiting:${spot.id}`,
+          tone: 'warn',
+          title: `${spot.block.name}: waiting on ${spot.pending} ${spot.pending === 1 ? 'reply' : 'replies'} for ${pluralRole(spot.role, spot.short)}`,
+          what: `You asked ${spot.pending} ${spot.pending === 1 ? 'person' : 'people'}. The spot stays open until someone says yes.`,
+          why: `${daysOutLabel(spot.event)}. If nobody says yes, ask someone else.`,
+          actionLabel: 'Check replies',
+          href: spotLink
+        })
+      }
     }
 
-    // 1b. Assignments saved but never sent to staff
+    // 1b. Asks saved in the planner but never sent as texts
     for (const event of events) {
-      const drafts = assignmentList.filter(
-        (a) => a.status === 'draft' && event.blocks.some((b) => b.id === a.blockId)
+      const drafts = requestList(planner).filter(
+        (r) => r.eventId === event.id && (r.status === 'draft' || changed(r))
       ).length
       if (!drafts) continue
       items.push({
         id: `publish:${event.id}`,
         kind: 'staffing',
         tone: 'warn',
-        title: `Send ${drafts} staffing ${drafts === 1 ? 'change' : 'changes'} for ${event.name}`,
-        what: 'Assignments are saved, but the team has not been asked to accept them yet.',
-        why: 'Publishing notifies each person so they can accept or decline.',
+        title: `Send ${drafts} ${drafts === 1 ? 'text' : 'texts'}`,
+        what: 'People are chosen, but they have not been asked yet.',
+        why: 'Sending the text lets each person say yes or no.',
         eventId: event.id,
         eventName: event.name,
         meta: `${drafts} not sent`,
-        actionLabel: 'Review and publish',
-        href: `/staffing/${event.id}`
+        dismissible: false,
+        actionLabel: 'Review and send',
+        href: `/staffing/${event.id}?send=1`
       })
     }
 
@@ -508,7 +365,8 @@ export function StoreProvider({ children }) {
           : 'No reply has been sent yet.',
         eventId: m.eventId,
         eventName: event ? event.name : 'No event',
-        meta: m.fromRole,
+        meta: m.fromRole.split(' · ')[0],
+        dismissible: true,
         actionLabel: 'Open and reply',
         href: `/messages/${m.id}`
       })
@@ -528,6 +386,7 @@ export function StoreProvider({ children }) {
         eventId: t.eventId,
         eventName: event ? event.name : 'No event',
         meta: t.due,
+        dismissible: true,
         actionLabel: 'Open event tasks',
         href: `/events/${t.eventId}/tasks`
       })
@@ -546,56 +405,80 @@ export function StoreProvider({ children }) {
         why: 'Once it is signed, the couple has formally agreed to the schedule.',
         eventId: d.eventId,
         eventName: event ? event.name : 'No event',
-        meta: `${d.kind} · ${d.status}`,
+        meta: 'Awaiting signature',
+        dismissible: true,
         actionLabel: 'Open documents',
         href: `/events/${d.eventId}/documents`
       })
     }
 
+    // 5. Payments due
+    for (const event of events) {
+      const plan = paymentsForEvent(event.id)
+      if (!plan) continue
+      for (const p of plan.schedule) {
+        if (p.state !== 'due') continue
+        items.push({
+          id: `pay:${event.id}:${p.id}`,
+          kind: 'payment',
+          tone: 'warn',
+          title: `Collect the ${p.label.toLowerCase()} of ${money(p.amount)}`,
+          what: `${money(plan.total - plan.paid)} of ${money(plan.total)} is still unpaid.`,
+          why: `${daysOutLabel(event)}. The balance is due before the event.`,
+          eventId: event.id,
+          eventName: event.name,
+          meta: p.when,
+          dismissible: true,
+          actionLabel: 'Open payments',
+          href: `/events/${event.id}/payments`
+        })
+      }
+    }
+
     const order = { urgent: 0, warn: 1, pending: 2, info: 3 }
-    return items
-      .filter((i) => !state.dismissedAttentionIds.includes(i.id))
-      .sort((a, b) => (order[a.tone] ?? 9) - (order[b.tone] ?? 9))
-  }, [openPositions, assignmentList, messageList, taskList, documentList, state.dismissedAttentionIds])
+    return items.sort((a, b) => (order[a.tone] ?? 9) - (order[b.tone] ?? 9))
+  }, [openPositions, planner, messageList, taskList, documentList, paymentsForEvent])
+
+  // Hidden items are still open; they are only kept out of the list.
+  const attention = useMemo(
+    () => allAttention.filter((i) => !state.dismissedAttentionIds.includes(i.id)),
+    [allAttention, state.dismissedAttentionIds]
+  )
+  const hiddenAttention = useMemo(
+    () => allAttention.filter((i) => state.dismissedAttentionIds.includes(i.id)),
+    [allAttention, state.dismissedAttentionIds]
+  )
+  const dismissedCount = hiddenAttention.length
 
   const attentionForEvent = useCallback((eventId) => attention.filter((a) => a.eventId === eventId), [attention])
 
   const value = {
     hydrated,
-    // raw state
-    assignments: state.assignments,
-    publishedEventIds: state.publishedEventIds,
-    offers: state.offers,
-    seenIntro: state.seenIntro,
     // collections
     taskList,
     messageList,
     documentList,
+    paymentsForEvent,
     // staffing
-    assignmentList,
-    assignmentsForBlock,
-    assignmentsForStaff,
     openPositions,
-    openPositionById,
-    candidatesForSlot,
     coverageForEvent,
-    // attention
+    // Up Next
     attention,
     attentionForEvent,
+    hiddenAttention,
+    dismissedCount,
     // actions
-    setAssignmentStatus,
-    assignStaff,
-    offerPosition,
-    claimOffer,
-    copyStaffing,
-    removeAssignment,
     toggleTask,
+    submitGuestCount,
     markReplied,
     markRead,
     signDocument,
-    publishSchedule,
+    unsignDocument,
+    recordPayment,
+    undoPayment,
     dismissAttention,
-    setSeenIntro,
+    restoreAttention,
+    restoreAllAttention,
     reset,
     // feedback
     toasts,

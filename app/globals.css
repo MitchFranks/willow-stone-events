@@ -33,16 +33,16 @@
 :root {
   color-scheme: light;
 
-  --canvas: #f3f1ec;
-  --surface: #faf9f6;
-  --surface-sunken: #e9e6df;
-  --line: #e0dcd3;
-  --line-strong: #8f897e;
-  --ink: #1c1b19;
-  --ink-muted: #5c5850;
-  --on-ink: #faf9f6;
+  --canvas: #f1f2f2;
+  --surface: #fafafa;
+  --surface-sunken: #e6e7e8;
+  --line: #dadcde;
+  --line-strong: #878b8f;
+  --ink: #1b1c1e;
+  --ink-muted: #55595e;
+  --on-ink: #fafafa;
   --accent: #2f4a3e;
-  --on-accent: #faf9f6;
+  --on-accent: #fafafa;
 
   --status-now: #a8361a;
   --status-now-soft: #f5e3db;
@@ -53,8 +53,8 @@
 
   --header-height: 3.5rem;
 
-  --shadow-raised-value: 0 1px 2px rgba(28, 27, 25, 0.05), 0 6px 20px rgba(28, 27, 25, 0.05);
-  --shadow-overlay-value: 0 2px 4px rgba(28, 27, 25, 0.06), 0 16px 48px rgba(28, 27, 25, 0.12);
+  --shadow-raised-value: 0 1px 2px rgba(27, 28, 30, 0.05), 0 6px 20px rgba(27, 28, 30, 0.05);
+  --shadow-overlay-value: 0 2px 4px rgba(27, 28, 30, 0.06), 0 16px 48px rgba(27, 28, 30, 0.12);
 }
 
 /* --- Raw tokens: dark (follows the OS setting) -------------------------- */
@@ -62,16 +62,16 @@
   :root {
     color-scheme: dark;
 
-    --canvas: #121211;
-    --surface: #1a1a18;
-    --surface-sunken: #0c0c0b;
-    --line: #2c2b28;
-    --line-strong: #6e695f;
-    --ink: #ecebe7;
-    --ink-muted: #a39e94;
-    --on-ink: #121211;
+    --canvas: #121314;
+    --surface: #1a1b1d;
+    --surface-sunken: #0c0d0e;
+    --line: #2b2d30;
+    --line-strong: #6b7075;
+    --ink: #ecedee;
+    --ink-muted: #9fa3a8;
+    --on-ink: #121314;
     --accent: #9cc1ae;
-    --on-accent: #121211;
+    --on-accent: #121314;
 
     --status-now: #f0896a;
     --status-now-soft: #3a1f17;

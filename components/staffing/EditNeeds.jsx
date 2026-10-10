@@ -1,22 +1,20 @@
 'use client'
 
 // ---------------------------------------------------------------------------
-// Edit needs (spec §B.5): event fields, a stepper per block and role, the
-// Suggested column, "+ Add a role", and "How suggestions work". Suggestions
-// never change needs on their own; saving is one undoable action.
+// Change how many people you need (spec §B.5 "Edit needs"): event fields, a
+// stepper per block and role, the Suggested column, "+ Add a role", and "How
+// suggestions work". Suggestions never change the numbers on their own;
+// saving is one undoable action.
 // ---------------------------------------------------------------------------
 
 import { useMemo, useState } from 'react'
 import { Modal } from '@/components/ui/domain'
-import { Button, TextInput } from '@/components/ui/primitives'
+import { Button, Icon, Select, TextInput } from '@/components/ui/primitives'
 import { ROLES } from '@/lib/mock/staff'
 import { WORLD } from '@/lib/staffing/adapter'
 import { BAR_TYPES, NO_RULE_TEXT, RATIO_RULES, SERVICE_STYLES } from '@/lib/staffing/rules'
 import { coverage, eventOf, needOf, rangeLabel, rolesOf, suggestedFor } from '@/lib/staffing/derive'
 import { useStaffing2 } from '@/lib/staffing/store'
-
-const selectCls =
-  'mt-1.5 block w-full rounded-sm border border-line-strong bg-surface px-3 py-2 text-body text-ink focus:border-accent'
 
 export function EditNeeds({ eventId, onClose }) {
   const { state, saveNeeds } = useStaffing2()
@@ -65,7 +63,7 @@ export function EditNeeds({ eventId, onClose }) {
     <Modal
       open
       onClose={onClose}
-      title="Edit needs"
+      title="Change how many people you need"
       labelledBy="edit-needs-title"
       footer={
         <>
@@ -77,7 +75,7 @@ export function EditNeeds({ eventId, onClose }) {
               onClose()
             }}
           >
-            Save needs
+            Save
           </Button>
         </>
       }
@@ -86,41 +84,26 @@ export function EditNeeds({ eventId, onClose }) {
         <div className="grid gap-3 sm:grid-cols-2">
           <TextInput label="Guests expected" id="en-guests" type="number" min="0" value={fields.expectedGuests} onChange={set('expectedGuests')} />
           <TextInput label="Guarantee" id="en-guarantee" type="number" min="0" value={fields.guaranteedCount} onChange={set('guaranteedCount')} hint="Final count, usually 48–72 h before" />
-          <div>
-            <label htmlFor="en-service" className="eyebrow block text-ink">
-              Service
-            </label>
-            <select id="en-service" className={selectCls} value={fields.serviceStyle} onChange={set('serviceStyle')}>
-              {SERVICE_STYLES.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="en-bar" className="eyebrow block text-ink">
-              Bar
-            </label>
-            <select id="en-bar" className={selectCls} value={fields.bar} onChange={set('bar')}>
-              {BAR_TYPES.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Service"
+            id="en-service"
+            value={fields.serviceStyle}
+            onChange={set('serviceStyle')}
+            options={SERVICE_STYLES.map((s) => ({ value: s.id, label: s.label }))}
+          />
+          <Select label="Bar" id="en-bar" value={fields.bar} onChange={set('bar')} options={BAR_TYPES.map((s) => ({ value: s.id, label: s.label }))} />
           <TextInput label="Bar stations" id="en-stations" type="number" min="0" value={fields.barStations} onChange={set('barStations')} />
-          <div>
-            <label htmlFor="en-servers" className="eyebrow block text-ink">
-              Servers come from
-            </label>
-            <select id="en-servers" className={selectCls} value={fields.serversFrom} onChange={set('serversFrom')}>
-              <option value="venue">Venue</option>
-              <option value="caterer">Caterer</option>
-            </select>
-            {fields.serversFrom === 'caterer' && <p className="mt-1 text-label text-ink-muted">Server suggestions are turned off.</p>}
-          </div>
+          <Select
+            label="Servers come from"
+            id="en-servers"
+            value={fields.serversFrom}
+            onChange={set('serversFrom')}
+            hint={fields.serversFrom === 'caterer' ? 'Server suggestions are turned off.' : undefined}
+            options={[
+              { value: 'venue', label: 'Venue' },
+              { value: 'caterer', label: 'Caterer' }
+            ]}
+          />
         </div>
 
         {base.blocks.map((b) => {
@@ -157,13 +140,13 @@ export function EditNeeds({ eventId, onClose }) {
                         </td>
                         <td className="py-1.5">
                           <span className="inline-flex items-center gap-1">
-                            <button type="button" aria-label={`Fewer ${role} on ${b.name}`} onClick={() => step(b.id, role, -1)} className="grid h-8 w-8 place-items-center rounded-full border border-line hover:bg-surface-sunken">
-                              −
-                            </button>
+                            <Button size="sm" className="w-8 px-0" aria-label={`Fewer ${role} on ${b.name}`} disabled={n === 0} onClick={() => step(b.id, role, -1)}>
+                              <Icon name="minus" size={13} />
+                            </Button>
                             <span className="w-6 text-center font-medium tabular-nums">{n}</span>
-                            <button type="button" aria-label={`More ${role} on ${b.name}`} onClick={() => step(b.id, role, 1)} className="grid h-8 w-8 place-items-center rounded-full border border-line hover:bg-surface-sunken">
-                              +
-                            </button>
+                            <Button size="sm" className="w-8 px-0" aria-label={`More ${role} on ${b.name}`} onClick={() => step(b.id, role, 1)}>
+                              <Icon name="plus" size={13} />
+                            </Button>
                           </span>
                         </td>
                         <td className="py-1.5 text-right text-ink-muted">
@@ -171,12 +154,9 @@ export function EditNeeds({ eventId, onClose }) {
                             <span title={`${sug.rule.basis} · confidence ${sug.rule.confidence}`}>
                               {sug.suggested}
                               {sug.suggested !== n && (
-                                <>
-                                  {' · '}
-                                  <button type="button" className="font-medium text-accent hover:underline" onClick={() => setCount(b.id, role, sug.suggested)}>
-                                    Use
-                                  </button>
-                                </>
+                                <Button size="sm" variant="ghost" className="ml-1 px-2" onClick={() => setCount(b.id, role, sug.suggested)}>
+                                  Use
+                                </Button>
                               )}
                             </span>
                           ) : (
@@ -189,28 +169,23 @@ export function EditNeeds({ eventId, onClose }) {
                 </tbody>
               </table>
               {missing.length > 0 && (
-                <select
+                <Select
                   aria-label={`Add a role to ${b.name}`}
+                  id={`en-add-${b.id}`}
+                  className="mt-2 w-fit"
                   value=""
                   onChange={(e) => e.target.value && setCount(b.id, e.target.value, 1)}
-                  className="mt-2 h-8 rounded-sm border border-dashed border-line-strong bg-surface px-3 text-small font-medium text-ink"
-                >
-                  <option value="">+ Add a role to {b.name}</option>
-                  {missing.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                  options={[{ value: '', label: `+ Add a role to ${b.name}` }, ...missing]}
+                />
               )}
             </section>
           )
         })}
 
-        <details className="rounded-md bg-surface-sunken px-3 py-2.5">
+        <details className="rounded-md border border-line px-3 py-2.5">
           <summary className="cursor-pointer text-small font-medium text-ink">How suggestions work</summary>
           <p className="mt-2 text-label text-ink-muted">
-            Suggestions use the guarantee if there is one, otherwise guests expected. They apply only to guest-facing blocks, skip roles the caterer supplies, and never change your needs unless you choose &quot;Use&quot;. These are venue defaults, not rules you must follow.
+            Suggestions use the guarantee if there is one, otherwise guests expected. They apply only to guest-facing blocks, skip roles the caterer supplies, and never change your numbers unless you choose &quot;Use&quot;. These are venue defaults, not rules you must follow.
           </p>
           <ul className="mt-2 space-y-1.5 text-label text-ink">
             {RATIO_RULES.map((r) => (

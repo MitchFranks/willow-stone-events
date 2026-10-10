@@ -1,13 +1,13 @@
 'use client'
 
-// Small controls shared by the Ask panel and Change times: block toggle chips
-// and the call-time select.
+// Small controls shared by the Ask panel, Change times and the phone: block
+// toggle chips, the call-time select and quick-pick reason chips. All built
+// from the design library's FilterChip and Select.
 
-import { cx } from '@/lib/cx'
-import { Icon } from '@/components/ui/primitives'
+import { FilterChip, Select } from '@/components/ui/primitives'
 import { fmtH, rangeLabel } from '@/lib/staffing/derive'
 
-export function BlockToggles({ blocks, selected, onChange, gaps = {} }) {
+export function BlockToggles({ blocks, selected, onChange, gaps = {}, label = 'Working' }) {
   const toggle = (id) => {
     if (selected.includes(id)) {
       if (selected.length === 1) return // at least one must stay selected
@@ -15,26 +15,13 @@ export function BlockToggles({ blocks, selected, onChange, gaps = {} }) {
     } else onChange([...selected, id])
   }
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Blocks">
-      {blocks.map((b) => {
-        const on = selected.includes(b.id)
-        return (
-          <button
-            key={b.id}
-            type="button"
-            aria-pressed={on}
-            onClick={() => toggle(b.id)}
-            className={cx(
-              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label font-medium transition-colors',
-              on ? 'border-accent bg-surface-sunken text-accent' : 'border-line bg-surface text-ink-muted hover:border-line-strong'
-            )}
-          >
-            <Icon name={on ? 'check' : 'plus'} size={12} />
-            {b.name} {rangeLabel(b.start, b.end)}
-            {gaps[b.id] ? <span className="font-normal text-ink-muted">· {gaps[b.id]} open</span> : null}
-          </button>
-        )
-      })}
+    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+      {blocks.map((b) => (
+        <FilterChip key={b.id} pressed={selected.includes(b.id)} onClick={() => toggle(b.id)}>
+          {b.name} {rangeLabel(b.start, b.end)}
+          {gaps[b.id] ? <span className="font-normal opacity-70">· {gaps[b.id]} open</span> : null}
+        </FilterChip>
+      ))}
     </div>
   )
 }
@@ -51,47 +38,25 @@ export function callOptionLabel(offset, startH) {
 export function CallTimeSelect({ id = 'call-time', startH, value, onChange }) {
   const opts = CALL_OFFSETS.includes(value) ? CALL_OFFSETS : [...CALL_OFFSETS, value].sort((a, b) => b - a)
   return (
-    <div>
-      <label htmlFor={id} className="eyebrow block text-ink">
-        Call time
-      </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-1.5 block w-full rounded-sm border border-line-strong bg-surface px-3 py-2 text-body text-ink focus:border-accent"
-      >
-        {opts.map((o) => (
-          <option key={o} value={o}>
-            {callOptionLabel(o, startH)}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Select
+      label="Call time"
+      id={id}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      options={opts.map((o) => ({ value: o, label: callOptionLabel(o, startH) }))}
+    />
   )
 }
 
-/** Pill quick-pick chips (reasons). */
+/** Quick-pick chips (reasons). Picking the pressed one clears it. */
 export function PickChips({ options, value, onChange, label }) {
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label={label}>
-      {options.map((o) => {
-        const on = value === o
-        return (
-          <button
-            key={o}
-            type="button"
-            aria-pressed={on}
-            onClick={() => onChange(on ? '' : o)}
-            className={cx(
-              'rounded-full border px-3 py-1.5 text-label font-medium transition-colors',
-              on ? 'border-accent bg-surface-sunken text-accent' : 'border-line bg-surface text-ink hover:border-line-strong'
-            )}
-          >
-            {o}
-          </button>
-        )
-      })}
+    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <FilterChip key={o} pressed={value === o} onClick={() => onChange(value === o ? '' : o)}>
+          {o}
+        </FilterChip>
+      ))}
     </div>
   )
 }

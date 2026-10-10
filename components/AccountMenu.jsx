@@ -1,10 +1,10 @@
 'use client'
 
 // ---------------------------------------------------------------------------
-// The initials circle in the top bar, as a menu button.
+// The signed-in person at the bottom of the sidebar, as a menu button.
 //
-// A small rounded pop-out with the signed-in person (name and role, not
-// interactive) and two links: Account and Settings. Behaves like a menu:
+// The button shows initials, name and role; it opens a small pop-out upward
+// with two links: Account and Settings. Behaves like a menu:
 // aria-haspopup / aria-expanded on the button, closes on outside click, Esc,
 // Tab out and choosing an item, and focus returns to the button. Arrow keys,
 // Home and End move between items; Tab and Enter work as normal.
@@ -14,11 +14,11 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
 import { cx } from '@/lib/cx'
 import { venue } from '@/lib/mock/events'
-import { Icon } from './ui/primitives'
+import { Avatar, Icon } from './ui/primitives'
 
 const ITEMS = [
   { href: '/account', label: 'Account', icon: 'user' },
-  { href: '/settings', label: 'Settings', icon: 'list' }
+  { href: '/settings', label: 'Settings', icon: 'settings' }
 ]
 
 export function AccountMenu() {
@@ -77,12 +77,17 @@ export function AccountMenu() {
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
         className={cx(
-          'grid h-9 w-9 place-items-center rounded-full bg-surface-sunken text-label font-medium text-ink ring-1 ring-line ring-inset transition-shadow hover:ring-line-strong',
-          open && 'ring-2 ring-accent'
+          'flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left transition-colors hover:bg-surface-sunken',
+          open && 'bg-surface-sunken'
         )}
       >
-        {venue.managerInitials}
-        <span className="sr-only">Account menu for {venue.manager}</span>
+        <Avatar initials={venue.managerInitials} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-small font-medium text-ink">{venue.manager}</span>
+          <span className="block truncate text-label text-ink-muted">{venue.managerRole}</span>
+        </span>
+        <Icon name="chevronDown" size={14} className={cx('text-ink-muted transition-transform', !open && 'rotate-180')} />
+        <span className="sr-only">Account menu</span>
       </button>
 
       {open && (
@@ -90,12 +95,8 @@ export function AccountMenu() {
           id={menuId}
           role="menu"
           aria-label="Account"
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-60 max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-line bg-surface motion-safe:animate-[vue-rise_.18s_ease-out]"
+          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-50 overflow-hidden rounded-md border border-line bg-surface motion-safe:animate-[vue-rise_.18s_ease-out]"
         >
-          <div role="presentation" className="border-b border-line bg-surface-sunken/60 px-4 py-3">
-            <div className="text-small font-medium text-ink">{venue.manager}</div>
-            <div className="text-label text-ink-muted">{venue.managerRole}</div>
-          </div>
           <ul role="none" className="p-1.5">
             {ITEMS.map((item) => (
               <li key={item.href} role="none">

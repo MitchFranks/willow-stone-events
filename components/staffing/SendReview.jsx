@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { useMemo } from 'react'
-import { Modal } from '@/components/ui/domain'
+import { Modal, openSpots } from '@/components/ui/domain'
 import { Button, Icon, StatusBadge } from '@/components/ui/primitives'
 import { pluralRole } from '@/lib/mock/staff'
 import { WORLD } from '@/lib/staffing/adapter'
@@ -49,7 +49,7 @@ export function SendReview({ prepared, onClose, onDone, onChangeTimes }) {
       for (const b of WORLD.eventMap[eid].blocks) {
         for (const role of rolesOf(b, after)) {
           const c = coverage(eid, b, role, after)
-          if (c.toFind > 0) gaps.push(`${b.name} still has ${c.toFind} open ${pluralRole(role, c.toFind)} spot${c.toFind === 1 ? '' : 's'} after this.`)
+          if (c.toFind > 0) gaps.push(`${b.name} will still have ${openSpots(c.toFind)} for ${pluralRole(role, c.toFind)} that nobody was asked for.`)
         }
       }
     }
@@ -82,22 +82,22 @@ export function SendReview({ prepared, onClose, onDone, onChangeTimes }) {
         </>
       }
     >
-      <p className="mb-3 text-small text-ink-muted">Each person gets one message for their whole day.</p>
+      <p className="mb-3 text-small text-ink-muted">Each person gets one text for their whole day. Texts can&apos;t be unsent.</p>
 
       {(model.warnings.length > 0 || model.gaps.length > 0) && (
-        <section className="mb-4 rounded-md border border-status-soon-soft bg-status-soon-soft/60 px-3 py-3">
+        <section className="mb-4 rounded-md bg-status-soon-soft px-3 py-3">
           <h3 className="flex items-center gap-1.5 text-small font-medium text-status-soon">
-            <Icon name="alert" size={13} />
-            Check before sending ({model.warnings.length + model.gaps.length})
+            <Icon name="clock" size={13} />
+            Worth a look before sending ({model.warnings.length + model.gaps.length})
           </h3>
           <ul className="mt-1.5 space-y-1.5 text-label text-ink">
             {model.warnings.map((w, i) => (
               <li key={`w${i}`} className="flex flex-wrap items-baseline justify-between gap-x-2">
                 <span>{w.text}</span>
                 {!prepared.askSpec && state.requests[w.r.id] && (
-                  <button type="button" className="font-medium text-accent hover:underline" onClick={() => onChangeTimes(w.r.id)}>
-                    Change
-                  </button>
+                  <Button size="sm" variant="ghost" onClick={() => onChangeTimes(w.r.id)}>
+                    Change times
+                  </Button>
                 )}
               </li>
             ))}
@@ -117,7 +117,7 @@ export function SendReview({ prepared, onClose, onDone, onChangeTimes }) {
                 {urgent && kind === 'ask' ? 'Short notice' : KIND_LABEL[kind]}
               </StatusBadge>
             </div>
-            <blockquote className="rounded-md border-l-4 border-line-strong bg-surface-sunken px-3 py-2 text-small leading-relaxed text-ink">
+            <blockquote className="rounded-md border-l-2 border-line-strong bg-surface-sunken px-3 py-2 text-small leading-relaxed text-ink">
               {text}
             </blockquote>
           </li>

@@ -25,6 +25,9 @@ export default function VendorDetailPage({ params }) {
   if (!vendor) return <EmptyState title="No such vendor" />
 
   const theirEvents = events.filter((e) => vendor.eventIds.includes(e.id))
+  // Messages carry no vendorId (only eventId and coupleId), so a vendor's
+  // messages are found by their contact's name in the sender line
+  // ("Marla Perez · Harvest Table"). Add a vendorId to the data to retire this.
   const theirMessages = messageList.filter((m) => m.from.includes(vendor.contact))
 
   return (
@@ -78,10 +81,14 @@ export default function VendorDetailPage({ params }) {
                         Replied
                       </StatusBadge>
                     ) : m.needsReply ? (
-                      <StatusBadge tone="urgent" size="sm">
+                      <StatusBadge tone={m.priority === 'urgent' ? 'urgent' : 'warn'} size="sm">
                         Needs reply
                       </StatusBadge>
-                    ) : null
+                    ) : (
+                      <StatusBadge tone="info" size="sm">
+                        No reply needed
+                      </StatusBadge>
+                    )
                   }
                 />
               ))}
