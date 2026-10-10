@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cx } from '@/lib/cx'
-import { upNextLabel, useStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
 import { venue } from '@/lib/mock/events'
 import { Button, Count, Icon } from './ui/primitives'
 import { ToastHost } from './ui/domain'
@@ -95,43 +95,29 @@ export function AppShell({ children }) {
           </button>
 
           {/* No logo yet: the name is set in Geist Light wherever a mark would go. */}
-          <Link href="/" className="flex items-baseline gap-3 rounded-sm" title="Back to the welcome screen">
+          <Link href="/" className="flex items-baseline gap-2 rounded-sm" title="Back to the welcome screen">
             <span className="text-title font-light text-ink">Vue</span>
-            <span className="hidden text-small text-ink-muted sm:block">Wedding venue operations</span>
           </Link>
-
-          {/* VISIBILITY OF SYSTEM STATUS: the prototype never pretends to be real. */}
-          <span className="ml-2 hidden h-6 items-center rounded-full bg-surface-sunken px-2.5 text-label font-medium text-ink-muted sm:inline-flex">
-            Early prototype
+          {/* The venue this workspace belongs to. */}
+          <span className="hidden items-center gap-2 text-small font-medium text-ink sm:flex">
+            <span aria-hidden="true" className="text-line-strong">/</span>
+            {venue.name}
           </span>
 
-          {/* The tester's goal is always one click away. */}
-          <button
-            type="button"
-            onClick={showIntro}
-            className="inline-flex h-9 items-center gap-2 rounded-sm border border-line-strong px-3 text-small font-medium text-ink transition-colors hover:bg-surface-sunken"
-          >
-            <Icon name="check" size={14} className="text-accent" />
-            Your goal
-          </button>
-
           <div className="ml-auto flex items-center gap-2">
-            <Link
-              href="/up-next"
-              className="hidden h-9 items-center gap-2 rounded-sm px-3 text-small font-medium text-ink transition-colors hover:bg-surface-sunken sm:inline-flex"
+            {/* The tester's goal is always one click away. */}
+            <button
+              type="button"
+              onClick={showIntro}
+              className="inline-flex h-9 items-center gap-2 rounded-sm border border-line-strong px-3 text-small font-medium text-ink transition-colors hover:bg-surface-sunken"
             >
-              <Icon
-                name={counts.attention ? 'alert' : attention.length ? 'clock' : 'check'}
-                size={14}
-                className={counts.attention ? 'text-status-now' : attention.length ? 'text-status-soon' : 'text-status-clear'}
-              />
-              {upNextLabel(attention)}
-            </Link>
-            <div className="hidden text-right sm:block">
-              <div className="text-small font-medium text-ink">{venue.manager}</div>
-              <div className="text-label text-ink-muted">{venue.managerRole}</div>
-            </div>
-            <AccountMenu />
+              <Icon name="check" size={14} className="text-accent" />
+              Your goal
+            </button>
+            {/* VISIBILITY OF SYSTEM STATUS: the prototype never pretends to be real. */}
+            <span className="inline-flex h-6 items-center rounded-full bg-surface-sunken px-2.5 text-label font-medium text-ink-muted">
+              Early prototype
+            </span>
           </div>
         </div>
       </header>
@@ -141,11 +127,11 @@ export function AppShell({ children }) {
         <aside
           id="main-nav"
           className={cx(
-            'fixed inset-y-0 left-0 z-40 w-64 shrink-0 overflow-y-auto border-r border-line bg-surface pt-(--header-height) transition-transform duration-200 ease-calm lg:sticky lg:top-(--header-height) lg:z-0 lg:h-[calc(100vh-var(--header-height))] lg:translate-x-0 lg:pt-0',
+            'fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-line bg-surface pt-(--header-height) transition-transform duration-200 ease-calm lg:sticky lg:top-(--header-height) lg:z-0 lg:h-[calc(100vh-var(--header-height))] lg:translate-x-0 lg:pt-0',
             navOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
-          <nav className="p-3" aria-label="Main">
+          <nav className="min-h-0 flex-1 overflow-y-auto p-3" aria-label="Main">
             {NAV.map((group) => (
               <div key={group.heading} className="mb-6">
                 <div className={cx('mb-1 px-3 text-label', group.quiet ? 'text-ink-muted/70' : 'font-medium text-ink')}>{group.heading}</div>
@@ -188,6 +174,11 @@ export function AppShell({ children }) {
               </p>
             </div>
           </nav>
+
+          {/* Signed-in person, pinned to the bottom of the sidebar. Its menu opens upward. */}
+          <div className="border-t border-line p-3">
+            <AccountMenu />
+          </div>
         </aside>
 
         {navOpen && (

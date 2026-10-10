@@ -7,7 +7,7 @@ import { Alert, Avatar, Breadcrumbs, Card, Field, PageHeader, TextInput } from '
 
 // Example contact details for the prototype. Not a real address or number.
 const CONTACT = {
-  email: 'dana@willowandstone.example',
+  email: 'dana@willowstone.example',
   phone: '(555) 010-0142'
 }
 
