@@ -341,25 +341,28 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ------------------------------ invitation ------------------------------ */}
-      {/* Styled like a card in an envelope: centered, double rule, small caps line. */}
-      <section className="border-t border-line bg-surface">
-        <div className="mx-auto w-full max-w-3xl px-4 py-20 md:px-8">
-          <div className="rounded-md border border-line-strong p-2">
-            <div className="rounded-sm border border-line px-6 py-12 text-center sm:px-12">
-              <p className="text-label font-medium tracking-[0.2em] text-accent uppercase">You&apos;re invited</p>
-              <h2 className="mt-4 text-title font-light text-balance sm:text-display">Try Vue for yourself</h2>
-              <p className="mx-auto mt-4 max-w-md text-body text-ink-muted">
-                Step in as Dana, the venue manager, and get the Johnson Wedding ready for Saturday.
-              </p>
-              <div className="mt-8 flex flex-wrap justify-center gap-3">
-                <Button href="/dashboard" variant="primary" size="lg">
-                  Start the preview
-                  <Icon name="arrowRight" size={16} />
-                </Button>
-              </div>
-              <p className="mt-4 text-label text-ink-muted">No sign-up. Nothing you do is saved.</p>
-            </div>
+      {/* ------------------------------ closing CTA ----------------------------- */}
+      {/* Echoes the hero: same photo, heavier wash, one headline and two buttons. */}
+      <section
+        className="relative isolate bg-ink bg-cover bg-center"
+        style={{ backgroundImage: `url(${asset('/images/hero-wedding.jpg')})` }}
+      >
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-black/70" />
+        <div className="mx-auto w-full max-w-3xl px-4 py-24 text-center md:px-8">
+          <h2 className="text-title font-light text-balance text-white sm:text-display">
+            Run every wedding with nothing slipping through.
+          </h2>
+          <p className="mx-auto mt-4 max-w-md text-heading text-white/80">
+            Your staff, your couples and your deadlines, all in one place.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Button href="/dashboard" variant="secondary" size="lg">
+              Get started
+              <Icon name="arrowRight" size={16} />
+            </Button>
+            <Button href="/up-next" variant="onDark" size="lg">
+              See what&apos;s up next
+            </Button>
           </div>
         </div>
       </section>
