@@ -123,9 +123,23 @@ const FEATURES = [
   { icon: 'dollar', title: 'Payments & documents', body: 'Balances due and contracts waiting for a signature.', href: '/events/evt-1001/payments' }
 ]
 
+// Photos: Unsplash License. Manager by gabbiistudios (unsplash.com/photos/YI2IZ9YzI0U),
+// staff by Martin Baron (unsplash.com/photos/v-QxPxRhTQg).
 const AUDIENCE = [
-  { title: 'Venue managers', body: 'See every wedding at a glance and stay ahead of the week.' },
-  { title: 'Event staff', body: 'Get one text with your shift, and answer yes or no.' }
+  {
+    title: 'Venue managers',
+    body: 'See every wedding at a glance and stay ahead of the week.',
+    image: '/images/who-manager.jpg',
+    alt: 'An event coordinator talking with guests at an outdoor reception table',
+    position: 'object-[50%_30%]'
+  },
+  {
+    title: 'Event staff',
+    body: 'Get one text with your shift, and answer yes or no.',
+    image: '/images/who-staff.jpg',
+    alt: 'A server in black offering a tray of food to a guest at an event',
+    position: 'object-center'
+  }
 ]
 
 function SectionHeading({ eyebrow, title }) {
@@ -249,10 +263,18 @@ export function Landing() {
           <SectionHeading eyebrow="Who it's for" title="Built for the people who run the day." />
           <div className="grid gap-8 sm:grid-cols-2">
             {AUDIENCE.map((a) => (
-              <div key={a.title} className="border-l-2 border-accent pl-5">
-                <h3 className="text-heading font-medium">{a.title}</h3>
-                <p className="mt-1 text-body text-ink-muted">{a.body}</p>
-              </div>
+              <figure key={a.title}>
+                <img
+                  src={asset(a.image)}
+                  alt={a.alt}
+                  loading="lazy"
+                  className={cx('aspect-[4/3] w-full rounded-md object-cover', a.position)}
+                />
+                <figcaption className="mt-4">
+                  <h3 className="text-heading font-medium">{a.title}</h3>
+                  <p className="mt-1 text-body text-ink-muted">{a.body}</p>
+                </figcaption>
+              </figure>
             ))}
           </div>
         </div>
@@ -272,7 +294,7 @@ export function Landing() {
 
       <footer className="border-t border-line">
         <p className="mx-auto w-full max-w-6xl px-4 py-4 text-small text-ink-muted md:px-8">
-          Early prototype. All data is simulated. Photo by Mathis Payet Descombes on Unsplash.
+          Early prototype. All data is simulated. Photos by Mathis Payet Descombes, gabbiistudios and Martin Baron on Unsplash.
         </p>
       </footer>
     </div>
