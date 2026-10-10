@@ -123,15 +123,15 @@ const FEATURES = [
   { icon: 'dollar', title: 'Payments & documents', body: 'Balances due and contracts waiting for a signature.', href: '/events/evt-1001/payments' }
 ]
 
-// Photos: Unsplash License. Manager by gabbiistudios (unsplash.com/photos/YI2IZ9YzI0U),
+// Photos: Unsplash License. Manager by Carlos Gil (unsplash.com/photos/RVHYGbQt28k),
 // staff by Martin Baron (unsplash.com/photos/v-QxPxRhTQg).
 const AUDIENCE = [
   {
     title: 'Venue managers',
     body: 'See every wedding at a glance and stay ahead of the week.',
     image: '/images/who-manager.jpg',
-    alt: 'An event coordinator talking with guests at an outdoor reception table',
-    position: 'object-[50%_30%]'
+    alt: 'A venue manager in a suit shaking hands with a client at the front desk',
+    position: 'object-center'
   },
   {
     title: 'Event staff',
@@ -158,7 +158,7 @@ export function Landing() {
   return (
     <div className="relative flex min-h-dvh flex-col bg-canvas text-ink">
       {/* Semi-transparent top bar over the hero photo: dark tint plus blur keeps it readable. */}
-      <header className="absolute inset-x-0 top-0 z-10 border-b border-white/15 bg-black/45 backdrop-blur-md">
+      <header className="absolute inset-x-0 top-0 z-10 border-b border-white/15 bg-black/30 backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center px-4 md:px-8">
           <span className="text-title font-light text-white">Vue</span>
           <Button href="/dashboard" variant="onDark" className="ml-auto">
@@ -294,7 +294,7 @@ export function Landing() {
 
       <footer className="border-t border-line">
         <p className="mx-auto w-full max-w-6xl px-4 py-4 text-small text-ink-muted md:px-8">
-          Early prototype. All data is simulated. Photos by Mathis Payet Descombes, gabbiistudios and Martin Baron on Unsplash.
+          Early prototype. All data is simulated. Photos by Mathis Payet Descombes, Carlos Gil and Martin Baron on Unsplash.
         </p>
       </footer>
     </div>
