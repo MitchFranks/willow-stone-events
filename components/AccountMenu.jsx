@@ -72,6 +72,9 @@ export function AccountMenu() {
 
   return (
     <div ref={wrap} className="relative">
+      <p className="mb-2 rounded-sm border border-line bg-surface-sunken px-2 py-1.5 text-label leading-snug text-ink-muted">
+        Need a fresh start? Open this menu and choose &ldquo;Reset prototype data.&rdquo;
+      </p>
       <button
         ref={button}
         type="button"
