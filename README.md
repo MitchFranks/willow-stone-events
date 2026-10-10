@@ -125,14 +125,16 @@ Users are told this in four places:
 - Anything that only exists to make the prototype testable is labelled as such: "Staff phone
   (prototype)", "Prototype only: answer for staff", "Design library (for reviewers)".
 
-There are no tours or coach popovers. The modal can be closed with either button, the close button
-or Esc, and the app is then fully free-form.
+The opening modal offers two choices: explore freely, or take an optional four-step tour through
+the dashboard, Up Next, Staffing Planner and event workspace. The tour explains how these areas
+support the staffing goal; users can go back, exit with a button or Esc, and continue exploring
+freely at any point. The "Your goal" button reopens the choice.
 
 ## Prototype Goal
 
 Testers are given this goal in the opening modal:
 
-> **You are Dana, the venue manager. The Johnson Wedding is this Saturday and it is short on staff.
+> **You are Dana, the venue manager. The Johnson Wedding is today and it is short on staff.
 > Find out what needs attention and make sure the wedding is fully staffed.**
 
 The modal does **not** say which buttons to press. There are several routes to the fix:
@@ -147,15 +149,15 @@ Because staff can't log in, the tester answers for them: every waiting person ha
 **"Prototype only: answer for …"** box with *Simulate: says yes* / *Simulate: can't make it*, and
 there is a full **Staff phone (prototype)** view.
 
-The seeded scenario (two events, set in `lib/mock/scope.js`; "today" is Thursday 17 September 2026):
+The seeded scenario (two events, set in `lib/mock/scope.js`; "today" is Saturday 10 October 2026):
 
-- **Johnson Wedding** — Saturday 19 September 2026, 150 guests, 4:00 PM ceremony, **5 open spots**
+- **Johnson Wedding** — Saturday 10 October 2026, 150 guests, 4:00 PM ceremony, **5 open spots**
   across Setup, Ceremony, Reception and Teardown
 - An unanswered couple request to move decorating to 9:00 AM
 - A catering guest-count guarantee due today (entered on the Tasks tab)
 - A day-of timeline awaiting your signature
 - A final balance of $4,250 due tomorrow
-- **Shah–Patel Rehearsal Dinner** — Thursday 24 September, a second, less urgent event, so Up Next
+- **Shah–Patel Rehearsal Dinner** — Saturday 17 October, a second, less urgent event, so Up Next
   has something to prioritise against
 
 ---
@@ -207,7 +209,7 @@ Every route has a job; none are filler.
 | Route | Screen |
 |---|---|
 | `/account` | Account (read-only) |
-| `/settings` | Settings: show my goal, show hidden Up Next items, reset |
+| `/settings` | Settings: show my goal, restore hidden Up Next items, reset all prototype data |
 | `/style-guide` | Design library (for reviewers) |
 
 Dynamic routes are statically generated for every seeded record, so any of them can be deep-linked.
@@ -263,7 +265,7 @@ chart and change history are behind disclosures; warnings that don't block staff
 "Show warnings".
 
 **User control.** Every dialog has Cancel and closes on Escape or backdrop click. Every screen has
-breadcrumbs. "Your goal" is always one click away. Reset is in Settings.
+breadcrumbs. "Your goal" is always one click away. Reset is in the account menu and Settings.
 
 **Accessibility.** Semantic tables and lists, `<button>` for actions and `<a>` for navigation, labels
 bound to every form control, `aria-invalid` on fields with errors, `aria-current` on active nav,
@@ -372,8 +374,9 @@ npm run build     # static export into out/
 npx serve out
 ```
 
-**Resetting:** the prototype remembers your changes in `localStorage`. Use **Settings → Reset
-everything** to restore the seeded scenario and see the intro again.
+**Resetting:** the prototype remembers your changes in `localStorage`. Use **Account → Reset
+prototype data** or **Settings → Reset everything** to restore the seeded scenario, including
+staffing and timeline edits, and see the intro again.
 
 ---
 

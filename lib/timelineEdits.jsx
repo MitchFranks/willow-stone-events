@@ -22,7 +22,7 @@ import { WORLD } from '@/lib/staffing/adapter'
 
 const RUN_KEY = 'vue-run-of-show-v2'
 
-const Ctx = createContext({ version: 0, rowsFor: () => [], setRows: () => {}, resetEvent: () => {} })
+const Ctx = createContext({ version: 0, rowsFor: () => [], setRows: () => {}, resetEvent: () => {}, resetAll: () => {} })
 
 function read(key) {
   try {
@@ -234,7 +234,16 @@ export function TimelineEditsProvider({ children }) {
     setVersion((v) => v + 1)
   }, [])
 
-  const value = useMemo(() => ({ version, rowsFor, setRows, resetEvent }), [version, rowsFor, setRows, resetEvent])
+  const resetAll = useCallback(() => {
+    for (const event of events) resetEvent(event.id)
+    try {
+      window.localStorage.removeItem('vue-run-view-v1')
+    } catch {
+      /* blocked storage: timeline data is still restored in memory */
+    }
+  }, [resetEvent])
+
+  const value = useMemo(() => ({ version, rowsFor, setRows, resetEvent, resetAll }), [version, rowsFor, setRows, resetEvent, resetAll])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 

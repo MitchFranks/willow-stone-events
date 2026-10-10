@@ -508,7 +508,7 @@ export function Staffing2Provider({ children }) {
           { undo: true, toast: { message: 'Away date removed.' } }
         )
       },
-      reset() {
+      reset({ undoable = true, notify = true } = {}) {
         const prev = stateRef.current
         try {
           window.localStorage.removeItem(STORAGE_KEY)
@@ -520,8 +520,9 @@ export function Staffing2Provider({ children }) {
         stateRef.current = next
         setState(next)
         setLoadError(false)
-        setUndoSlot({ state: prev })
-        showToast({ message: 'Sample data restored.', undo: true })
+        setUndoSlot(undoable ? { state: prev } : null)
+        setToast(notify ? { id: `reset-${Date.now()}`, message: 'Sample data restored.', undo: true } : null)
+        setPhoneFor(null)
       },
       undo() {
         const slot = undoRef.current

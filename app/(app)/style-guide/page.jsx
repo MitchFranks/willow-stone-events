@@ -225,7 +225,7 @@ export default function StyleGuidePage() {
             <ListRow
               leading={<Avatar initials="EJ" />}
               title="Emily & Marcus Johnson"
-              sub="Johnson Wedding · Sat, Sep 19"
+              sub="Johnson Wedding · Sat, Oct 10"
               trailing={
                 <StatusBadge tone="urgent" size="sm">
                   3 in Up Next
@@ -236,7 +236,7 @@ export default function StyleGuidePage() {
             <ListRow
               leading={<Avatar initials="PS" />}
               title="Priya Shah & Dev Patel"
-              sub="Shah–Patel Rehearsal Dinner · Thu, Sep 24"
+              sub="Shah–Patel Rehearsal Dinner · Sat, Oct 17"
               trailing={
                 <StatusBadge tone="done" size="sm">
                   All set

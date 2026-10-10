@@ -14,7 +14,7 @@ import { Button, Icon } from '@/components/ui/primitives'
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-export function IntroModal({ onClose }) {
+export function IntroModal({ onClose, onStartTour }) {
   const ref = useRef(null)
   const closeRef = useRef(onClose)
   closeRef.current = onClose
@@ -85,23 +85,23 @@ export function IntroModal({ onClose }) {
           <div className="rounded-sm border border-line-strong bg-surface-sunken px-4 py-3">
             <p className="text-label font-medium text-ink-muted">Your goal</p>
             <p className="mt-1">
-              You are Dana, the venue manager. <strong className="font-semibold">The Johnson Wedding is this Saturday</strong>{' '}
+              You are Dana, the venue manager. <strong className="font-semibold">The Johnson Wedding is today</strong>{' '}
               and it is short on staff. Find out what needs attention and make sure the wedding is fully staffed.
             </p>
           </div>
 
-          <p className="text-small text-ink-muted">
-            There is no set route: explore however you like. Bring this back any time with &ldquo;Your goal&rdquo; at
-            the top of the screen.
+            <p className="text-small text-ink-muted">
+              Choose a short optional tour, or explore freely. You can leave the tour whenever you like. Reopen this
+              choice with &ldquo;Your goal&rdquo; at the top of the screen.
           </p>
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
           <Button variant="secondary" size="md" onClick={onClose}>
-            I&apos;ll look around first
+              I&apos;ll explore on my own
           </Button>
-          <Button variant="primary" size="md" onClick={onClose} data-autofocus>
-            Got it, let&apos;s start
+            <Button variant="primary" size="md" onClick={onStartTour} data-autofocus>
+              Show me around
             <Icon name="arrowRight" size={14} />
           </Button>
         </div>

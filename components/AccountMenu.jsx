@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { cx } from '@/lib/cx'
 import { venue } from '@/lib/mock/events'
 import { Avatar, Icon } from './ui/primitives'
+import { usePrototypeReset } from '@/lib/usePrototypeReset'
 
 const ITEMS = [
   { href: '/account', label: 'Account', icon: 'user' },
@@ -22,6 +23,7 @@ const ITEMS = [
 ]
 
 export function AccountMenu() {
+  const { resetPrototype, dialog } = usePrototypeReset()
   const [open, setOpen] = useState(false)
   const wrap = useRef(null)
   const button = useRef(null)
@@ -111,9 +113,24 @@ export function AccountMenu() {
                 </Link>
               </li>
             ))}
+            <li role="none">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  close(false)
+                  resetPrototype()
+                }}
+                className="flex h-9 w-full items-center gap-3 rounded-sm px-3 text-left text-small font-medium text-status-now transition-colors hover:bg-status-now-soft focus-visible:bg-status-now-soft focus-visible:outline-offset-0"
+              >
+                <Icon name="refresh" size={15} />
+                Reset prototype data
+              </button>
+            </li>
           </ul>
         </div>
       )}
+      {dialog}
     </div>
   )
 }

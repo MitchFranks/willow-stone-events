@@ -52,7 +52,7 @@ dates are **pre-formatted strings**, not date values.
 | `couple` | string | Display text, e.g. "Emily & Marcus Johnson" |
 | `coupleId` | string → Couple | The real link |
 | `dateKey` | `YYYY-MM-DD` | The only true date. Used for clash detection and days-out |
-| `date`, `dateShort`, `day` | string | "Saturday, September 19, 2026" / "Sat, Sep 19" / "Sat". Hand-typed duplicates of `dateKey` ⚠️ |
+| `date`, `dateShort`, `day` | string | "Saturday, October 10, 2026" / "Sat, Oct 10" / "Sat". Hand-typed duplicates of `dateKey` ⚠️ |
 | `expectedGuests` | number | Planning headcount. Can still change |
 | `guaranteedCount` | number \| null | The **guarantee**: the final count the venue/caterer bills for. `null` until submitted ⚠️ |
 | `spaces` | string | Free text, e.g. "Garden Terrace · Stone Hall" |
@@ -131,7 +131,7 @@ A person is "available" for a block only if one window **fully covers** it (`isA
 | `id` | string | `t-guest-count` |
 | `eventId` | string → Event | |
 | `title`, `detail` | string | "Submit the guarantee to Harvest Table Catering" |
-| `due` | string | Display text: "Due today", "Due Fri, Sep 18", "Completed Sep 12" ⚠️ |
+| `due` | string | Display text: "Due today", "Due Sun, Oct 11", "Completed Sep 12" ⚠️ |
 | `dueTone` | tone | `urgent`, `warn`, `info`, `done`. **Also decides whether the task appears in Up Next** ⚠️ |
 | `owner` | string | Person's name as text (not an id) |
 | `done` | boolean | Seed value only. Live value = `doneTaskIds` in state |
@@ -173,7 +173,7 @@ deposit, installments and final balance.
 |---|---|---|
 | `total`, `paid` | number (USD) | Contract value / amount received. `paid` is stored, not summed from the schedule |
 | `schedule[]` | Installment[] | `{ id, label, amount, when, state }` — labels: Booking deposit / Deposit, Second/Third installment, Final balance |
-| `schedule[].state` | enum | `paid`, `due`, `scheduled`. `when` is display text: "Due Sep 18, 2026" |
+| `schedule[].state` | enum | `paid`, `due`, `scheduled`. `when` is display text: "Due Oct 11, 2026" |
 
 ### Run of show &nbsp; `timelines` · screens: event *Timeline* tab
 
@@ -189,7 +189,7 @@ assignment (3:00–5:00 PM)". Static: nothing writes new entries when you act in
 ### Venue &nbsp; (single object)
 
 `name`, `manager` ("Dana Whitcomb", the signed-in user), `managerRole`, `managerInitials`,
-`today` ("Thursday, September 17, 2026"), `todayShort`. `today` is **hard-coded** (and mirrored by
+`today` ("Saturday, October 10, 2026"), `todayShort`. `today` is **hard-coded** (and mirrored by
 `TODAY_KEY`); nothing reads the real clock.
 
 ---
@@ -381,7 +381,7 @@ external parties, **BEO** (banquet event order), **ceremony site / reception spa
 
 2. **"Tone" is both colour and logic.** The same vocabulary (`urgent / warn / info / done`) appears on Task (`dueTone`), Message (`priority`), Document (`tone`), Vendor (`statusTone`), Activity log and Run of show. In Task and Document it also *decides whether an Up Next item exists* — a document needs `tone: 'urgent'` and a task needs `urgent`/`warn`, while the text `status` ("Awaiting couple") is ignored. Restyling a pill would silently change what shows up on the dashboard. `pending` is in the sort order but nothing produces it.
 
-3. **Dates and "how soon" are mostly typed text, not values.** `Event.dateKey` is a real date and "days out" is now computed from it, but `date`, `dateShort`, `day`, `Task.due`, `Message.received`, payment `when` and `venue.today` are hand-written strings, and "today" is frozen at Sep 17, 2026. Nothing recomputes overdue or urgency; only the staffing-clash check and days-out use an actual date.
+3. **Dates and "how soon" are mostly typed text, not values.** `Event.dateKey` is a real date and "days out" is now computed from it, but `date`, `dateShort`, `day`, `Task.due`, `Message.received`, payment `when` and `venue.today` are hand-written strings, and "today" is frozen at Oct 10, 2026. Nothing recomputes overdue or urgency; only the staffing-clash check and days-out use an actual date.
 
 4. **The same real-world fact is stored in several places.** The Johnson guest count lives in `Event.expectedGuests`, in the guarantee task, in the catering message ("Last number I have is 150"), in the vendor status "Guarantee due" and in a run-of-show note. `guaranteedCount` is `null` until the guarantee is submitted, and nothing sets it. The $4,250 balance is in a Task, a payment installment and the Activity log. Only the Task, Message and Document records are wired into Up Next, so resolving the *thing* (e.g. paying the balance) does not clear the *task* — ticking the task is what clears it.
 

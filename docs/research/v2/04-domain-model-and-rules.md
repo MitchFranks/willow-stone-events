@@ -633,7 +633,7 @@ Format: **Given / When / Then**. "Seed" = no extra data needed. Times use the pr
 32. **Ratios.** Johnson (150 guests, full bar, 2 stations): Bartender suggested `ceil(150/50) = 3` vs 1 (delta +2). Server suppressed (`suppliedBy.Server = caterer`). Martinez 180 → Bartender 4 vs 2. Taylor 45 → 1 vs 1 → no suggestion. Shah 60 plated, venue-supplied → Server `ceil(60/12) = 5` vs 2.
 33. **Guarantee wins.** Set Johnson `guaranteedCount = 132` → Bartender suggestion = 3 (`ceil(2.64)`). Requirement counts don't change until "Apply".
 34. **Event not booked.** An event with `bookingStatus 'Tentative hold'` → publish shows `E-NOT-BOOKED` (soft). Drafts are allowed.
-35. **Unanswered pending.** Grace pending on Johnson Reception. With the frozen today (Sep 17) and a call 17:00 on Sep 19 (≈ 48–56 h away, depending on the clock used) → `E-UNANSWERED` warn. At < 24 h → urgent.
+35. **Unanswered pending.** Grace pending on Johnson Reception. With the frozen clock at 10:00 on Oct 10 and a call at 17:00 that day (7 hours away) → `E-UNANSWERED` urgent. More than 24 hours away → warn.
 36. **Block not staffed.** A "Cocktail hour" block with `staffed: false` and no requirements → no coverage row, no suggestions, still on the run of show.
 
 ### Integrity

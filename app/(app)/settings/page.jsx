@@ -8,30 +8,14 @@
 // These live here, not in the main menu, so the menu stays about the work.
 
 import { useStore } from '@/lib/store'
-import { useStaffing2 } from '@/lib/staffing/store'
 import { useOnboarding } from '@/components/onboarding/OnboardingProvider'
 import { Breadcrumbs, Button, Card, Icon, PageHeader } from '@/components/ui/primitives'
-import { useConfirm } from '@/components/ui/domain'
+import { usePrototypeReset } from '@/lib/usePrototypeReset'
 
 export default function SettingsPage() {
-  const { showIntro, reset: resetIntro } = useOnboarding()
-  const { reset: resetStore, dismissedCount, restoreAllAttention, toast } = useStore()
-  const planner = useStaffing2()
-  const { confirm, dialog } = useConfirm()
-
-  const resetAll = () =>
-    confirm({
-      title: 'Reset everything?',
-      body: 'Every reply, text, task and hidden item you changed goes back to how it started. This cannot be undone.',
-      confirmLabel: 'Reset everything',
-      danger: true,
-      onConfirm: () => {
-        resetStore()
-        planner.reset()
-        resetIntro()
-        toast('The prototype is back to its starting state.')
-      }
-    })
+  const { showIntro } = useOnboarding()
+  const { dismissedCount, restoreAllAttention, toast } = useStore()
+  const { resetPrototype, dialog } = usePrototypeReset()
 
   const showHidden = () => {
     restoreAllAttention()
@@ -69,17 +53,19 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="Reset prototype data" subtitle="Start over with the original sample weddings and staff." icon="refresh">
-          <p className="text-body leading-relaxed text-ink">
-            Undoes everything you have done (texts, replies, tasks, hidden items) and shows the first message again.
-          </p>
-          <div className="mt-4">
-            <Button variant="danger" size="sm" onClick={resetAll}>
-              <Icon name="refresh" size={13} />
-              Reset everything
-            </Button>
-          </div>
-        </Card>
+        <div id="reset-prototype">
+          <Card title="Reset prototype data" subtitle="Start over with the original sample weddings and staff." icon="refresh">
+            <p className="text-body leading-relaxed text-ink">
+              Undoes your changes to replies, tasks, messages, staffing, timelines and hidden items, then shows the first message again.
+            </p>
+            <div className="mt-4">
+              <Button variant="danger" size="sm" onClick={resetPrototype}>
+                <Icon name="refresh" size={13} />
+                Reset everything
+              </Button>
+            </div>
+          </Card>
+        </div>
 
         <Card title="Design library (for reviewers)" subtitle="Not part of the venue manager's work." icon="book">
           <p className="text-body leading-relaxed text-ink">
