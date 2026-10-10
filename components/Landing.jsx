@@ -106,12 +106,74 @@ function PhonePreview({ items }) {
   )
 }
 
+// ---- How it works: one tiny screen per step, mostly grey bars. ----
+
+function MiniCard({ children }) {
+  return (
+    <div aria-hidden="true" className="flex h-40 flex-col justify-center gap-2 rounded-md border border-line bg-surface p-4 shadow-raised">
+      {children}
+    </div>
+  )
+}
+
+/** Step 1: a new item lands at the top of Up Next. */
+function SpotPreview({ item }) {
+  return (
+    <MiniCard>
+      <div className="flex items-center gap-2 rounded-sm border border-status-now/40 bg-status-now-soft px-3 py-2">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-status-now" />
+        <span className="min-w-0 flex-1 truncate text-label font-medium text-ink">{item.title}</span>
+        <span className="rounded-full bg-status-now px-1.5 text-[10px] font-medium text-on-ink">New</span>
+      </div>
+      {[0, 1].map((i) => (
+        <div key={i} className="flex items-center gap-2 px-3 py-2 opacity-60">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-status-soon" />
+          <Bar className={i ? 'w-1/2' : 'w-2/3'} />
+        </div>
+      ))}
+    </MiniCard>
+  )
+}
+
+/** Step 2: the item says which wedding and how soon. */
+function WhyPreview({ item }) {
+  return (
+    <MiniCard>
+      <div className="flex items-center gap-2">
+        <span className="text-label font-medium text-ink">{item.eventName}</span>
+        <span className="rounded-full bg-status-now-soft px-2 text-[11px] font-medium text-status-now">
+          {item.why.split('.')[0]}
+        </span>
+      </div>
+      <Bar className="w-3/4" />
+      <Bar className="w-1/2" />
+    </MiniCard>
+  )
+}
+
+/** Step 3: pick someone, and the spot shows as filled. */
+function FixPreview() {
+  return (
+    <MiniCard>
+      <div className="flex items-center gap-2 rounded-sm border border-line px-3 py-2">
+        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-surface-sunken text-[10px] font-medium text-ink">RD</span>
+        <Bar className="flex-1" />
+        <span className="rounded-sm bg-ink px-2 py-0.5 text-[11px] font-medium text-on-ink">Ask</span>
+      </div>
+      <div className="flex items-center gap-1.5 self-start rounded-full bg-status-clear-soft px-2 py-0.5 text-[11px] font-medium text-status-clear">
+        <Icon name="check" size={12} />
+        Filled
+      </div>
+    </MiniCard>
+  )
+}
+
 // ---- Below the fold: short sections that explain the product. ----
 
 const STEPS = [
-  { icon: 'search', title: 'Vue spots the problem', body: 'A declined shift, an unanswered couple, a payment due.' },
-  { icon: 'alert', title: 'You see why it matters', body: 'Which wedding it affects and how soon.' },
-  { icon: 'check', title: 'You fix it in one click', body: 'Every item comes with the button that solves it.' }
+  { title: 'Vue spots the problem', body: 'A declined shift, an unanswered couple, a payment due.' },
+  { title: 'You see why it matters', body: 'Which wedding it affects and how soon.' },
+  { title: 'You fix it in one click', body: 'Every item comes with the button that solves it.' }
 ]
 
 const FEATURES = [
@@ -154,6 +216,7 @@ function SectionHeading({ eyebrow, title }) {
 export function Landing() {
   const { attention } = useStore()
   const items = attention.slice(0, 4)
+  const first = attention[0]
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-canvas text-ink">
@@ -224,10 +287,8 @@ export function Landing() {
           <ol className="grid gap-8 sm:grid-cols-3">
             {STEPS.map((step, i) => (
               <li key={step.title}>
-                <span className="grid h-10 w-10 place-items-center rounded-full border border-line-strong text-ink">
-                  <Icon name={step.icon} size={18} />
-                </span>
-                <p className="mt-4 text-label text-ink-muted">Step {i + 1}</p>
+                {first && (i === 0 ? <SpotPreview item={first} /> : i === 1 ? <WhyPreview item={first} /> : <FixPreview />)}
+                <p className="mt-5 text-label text-ink-muted">Step {i + 1}</p>
                 <h3 className="mt-1 text-heading font-medium">{step.title}</h3>
                 <p className="mt-1 text-body text-ink-muted">{step.body}</p>
               </li>
@@ -280,14 +341,26 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ------------------------------- closing CTA ----------------------------- */}
+      {/* ------------------------------ invitation ------------------------------ */}
+      {/* Styled like a card in an envelope: centered, double rule, small caps line. */}
       <section className="border-t border-line bg-surface">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-6 px-4 py-20 sm:flex-row sm:items-center sm:justify-between md:px-8">
-          <h2 className="max-w-lg text-title font-light text-balance">The Johnson Wedding is Saturday. Is it ready?</h2>
-          <Button href="/up-next" variant="primary" size="lg">
-            See what&apos;s up next
-            <Icon name="arrowRight" size={16} />
-          </Button>
+        <div className="mx-auto w-full max-w-3xl px-4 py-20 md:px-8">
+          <div className="rounded-md border border-line-strong p-2">
+            <div className="rounded-sm border border-line px-6 py-12 text-center sm:px-12">
+              <p className="text-label font-medium tracking-[0.2em] text-accent uppercase">You&apos;re invited</p>
+              <h2 className="mt-4 text-title font-light text-balance sm:text-display">Try Vue for yourself</h2>
+              <p className="mx-auto mt-4 max-w-md text-body text-ink-muted">
+                Step in as Dana, the venue manager, and get the Johnson Wedding ready for Saturday.
+              </p>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Button href="/dashboard" variant="primary" size="lg">
+                  Start the preview
+                  <Icon name="arrowRight" size={16} />
+                </Button>
+              </div>
+              <p className="mt-4 text-label text-ink-muted">No sign-up. Nothing you do is saved.</p>
+            </div>
+          </div>
         </div>
       </section>
       </main>
