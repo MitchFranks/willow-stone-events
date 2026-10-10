@@ -261,9 +261,12 @@ export function Landing() {
           <span className="text-title font-light text-white">Vue</span>
           <div className="ml-auto flex items-center gap-2">
             <PrototypeNotice />
-            <Button href={CTA.href} variant="onDark" className="ml-1 hidden sm:inline-flex">
-              {CTA.label}
-            </Button>
+            {/* Wrapped, not hidden via className: Button's own inline-flex would win. */}
+            <span className="ml-1 hidden sm:inline-flex">
+              <Button href={CTA.href} variant="onDark">
+                {CTA.label}
+              </Button>
+            </span>
           </div>
         </div>
       </header>
