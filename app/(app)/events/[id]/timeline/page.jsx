@@ -22,6 +22,20 @@ const SNAP = 15 // minutes
 const DEFAULT_LEN = 60
 const MIN_LEN = 15
 
+// The visible window is the same on every run of show, and is remembered.
+const VIEW_KEY = 'vue-run-view-v1'
+const DEFAULT_VIEW = { start: 360, end: 1380 } // 6:00 AM to 11:00 PM
+
+function readView() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(VIEW_KEY) || 'null')
+    if (v && Number.isFinite(v.start) && Number.isFinite(v.end) && v.start >= 0 && v.end <= 1440 && v.end - v.start >= 120) return v
+  } catch {
+    /* fall through to the default */
+  }
+  return DEFAULT_VIEW
+}
+
 const INPUT =
   'w-full rounded-sm border border-line-strong bg-surface px-3 py-2 text-body text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent'
 
@@ -70,6 +84,78 @@ const sortRows = (rows) =>
     .map((x) => x.row)
 
 const range = (s, e) => `${clockLabel(s)} – ${clockLabel(e)}`
+
+/* ------------------------------------------------------- display range -- */
+
+/** "Display earlier" / "Display later": asks which time to show from, or until. */
+function RangeButton({ label, icon, options, initial, onApply, onReset, up, disabled, disabledNote }) {
+  const [open, setOpen] = useState(false)
+  const [value, setValue] = useState(initial)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return undefined
+    const onKey = (e) => e.key === 'Escape' && setOpen(false)
+    const onDown = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false)
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onDown)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        disabled={disabled}
+        title={disabled ? disabledNote : label}
+        onClick={() => {
+          setValue(initial)
+          setOpen((v) => !v)
+        }}
+        className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-[12px] font-semibold text-ink-2 transition-colors hover:border-accent-line hover:bg-accent-soft hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-surface disabled:hover:text-ink-2"
+      >
+        <Icon name="chevronDown" size={12} className={icon === 'up' ? 'rotate-180' : undefined} />
+        {label}
+      </button>
+      {open && (
+        <div
+          role="dialog"
+          className={`absolute left-0 z-30 w-60 rounded-2xl border border-line bg-surface p-3 shadow-pop ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}
+        >
+          <label htmlFor={`range-${label}`} className="text-[13px] font-semibold text-ink">
+            {label === 'Display earlier' ? 'Show the day from' : 'Show the day until'}
+          </label>
+          <select id={`range-${label}`} value={value} onChange={(e) => setValue(Number(e.target.value))} className={INPUT + ' mt-2'}>
+            {options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-[11px] text-muted">Applies to every run of show.</p>
+          <div className="mt-2.5 flex items-center justify-between gap-2">
+            <button type="button" onClick={() => { onReset(); setOpen(false) }} className="text-[12px] font-semibold text-muted hover:text-accent">
+              Back to 6 AM – 11 PM
+            </button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                onApply(value)
+                setOpen(false)
+              }}
+            >
+              Apply
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 /* ---------------------------------------------------------------- editor -- */
 
@@ -226,10 +312,21 @@ export default function RunOfShowPage({ params }) {
   const event = events.find((e) => e.id === id)
   const rows = rowsFor(id)
 
-  // The visible day: 6 AM to midnight, earlier if the data needs it.
+  // The visible day: 6 AM to 11 PM unless the user asked for more. A block
+  // outside the window is never hidden, so the window grows to hold it.
+  const [view, setViewState] = useState(DEFAULT_VIEW)
+  useEffect(() => setViewState(readView()), [])
+  const setView = (next) => {
+    setViewState(next)
+    try {
+      window.localStorage.setItem(VIEW_KEY, JSON.stringify(next))
+    } catch {
+      /* blocked storage: the choice still applies for this visit */
+    }
+  }
   const spans = rows.map(span)
-  const lo = Math.min(360, ...spans.map((x) => Math.floor(x.s / 60) * 60))
-  const hi = 1440
+  const lo = Math.min(view.start, ...spans.map((x) => Math.floor(x.s / 60) * 60))
+  const hi = Math.min(1440, Math.max(view.end, ...spans.map((x) => Math.ceil(Math.min(x.e, 1440) / 60) * 60)))
   const height = ((hi - lo) / 60) * PX
   const hours = Array.from({ length: (hi - lo) / 60 + 1 }, (_, i) => lo / 60 + i)
 
@@ -456,10 +553,24 @@ export default function RunOfShowPage({ params }) {
         }
         bodyClassName="px-0 py-0"
       >
-        <div className="flex px-3 py-3 sm:px-4">
+        <div className="px-3 pt-3 sm:px-4">
+          <div className="ml-14 pl-3">
+            <RangeButton
+              label="Display earlier"
+              icon="up"
+              initial={Math.max(0, lo - 120)}
+              options={Array.from({ length: lo / 60 }, (_, i) => ({ value: i * 60, label: clockLabel(i * 60) }))}
+              onApply={(start) => setView({ ...view, start })}
+              onReset={() => setView(DEFAULT_VIEW)}
+              disabled={lo <= 0}
+              disabledNote="Already showing from midnight"
+            />
+          </div>
+        </div>
+        <div className="flex px-3 py-2 sm:px-4">
           <div className="relative w-14 shrink-0" style={{ height }} aria-hidden="true">
             {hours.map((h, i) =>
-              i === 0 || i === hours.length - 1 ? null : (
+              i === hours.length - 1 ? null : (
                 <span key={h} className="absolute right-2 -translate-y-1/2 whitespace-nowrap text-label text-ink-muted" style={{ top: ((h * 60 - lo) / 60) * PX }}>
                   {clockLabel(h * 60)}
                 </span>
@@ -493,6 +604,21 @@ export default function RunOfShowPage({ params }) {
                 {(editor?.values.title || '(No title)') + ' · ' + range(draft.s, draft.e)}
               </div>
             )}
+          </div>
+        </div>
+        <div className="px-3 pb-3 sm:px-4">
+          <div className="ml-14 pl-3">
+            <RangeButton
+              label="Display later"
+              icon="down"
+              up
+              initial={Math.min(1440, hi + 120)}
+              options={Array.from({ length: (1440 - hi) / 60 }, (_, i) => ({ value: hi + (i + 1) * 60, label: hi + (i + 1) * 60 === 1440 ? '12:00 AM (midnight)' : clockLabel(hi + (i + 1) * 60) }))}
+              onApply={(end) => setView({ ...view, end })}
+              onReset={() => setView(DEFAULT_VIEW)}
+              disabled={hi >= 1440}
+              disabledNote="Already showing until midnight"
+            />
           </div>
         </div>
       </Card>

@@ -31,7 +31,7 @@ const NAV = [
       { href: '/dashboard', label: 'Dashboard', icon: 'home', exact: true },
       { href: '/up-next', label: 'Up Next', icon: 'check', badge: 'attention', onboarding: 'up-next' },
       { href: '/calendar', label: 'Calendar', icon: 'calendar', onboarding: 'calendar' },
-      { href: '/events', label: 'Events', icon: 'list' }
+      { href: '/events', label: 'Events', icon: 'list', onboarding: 'events' }
     ]
   },
   {
@@ -193,7 +193,20 @@ export function AppShell({ children }) {
               >
                 Reset prototype data
               </button>
-              <Link href="/style-guide" className="mt-1 flex h-9 items-center justify-center rounded-sm px-3 text-small font-medium text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink">
+              {/* Back to a true first visit: the same reset, every user guide, and the home page. */}
+              <button
+                type="button"
+                onClick={() => {
+                  reset()
+                  resetGuide('/')
+                  clearPlannerGuide()
+                  clearEventsGuide()
+                }}
+                className="mt-2 w-full rounded-sm border border-accent-line bg-accent-soft px-3 py-2 text-label font-medium text-accent transition-colors hover:bg-accent hover:text-on-accent"
+              >
+                Reset Me
+              </button>
+              <Link href="/style-guide" className="mt-2 flex h-9 items-center justify-center rounded-sm px-3 text-small font-medium text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink">
                 Style guide
               </Link>
               <p className="mt-3 px-3 text-label text-ink-muted">

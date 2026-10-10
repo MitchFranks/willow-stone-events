@@ -36,7 +36,7 @@ export default function EventsPage() {
         title="Events"
         lead="Every wedding and wedding-weekend event on the books: the wedding itself, rehearsal dinners, engagement parties, showers, welcome parties and brunches."
         actions={
-          <Button href="/events/new" variant="primary" size="md">
+          <Button href="/events/new" variant="primary" size="md" data-guide="new-event">
             <Icon name="plus" size={14} />
             New event
           </Button>
