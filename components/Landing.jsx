@@ -8,6 +8,10 @@
 // on a laptop and a phone. Scrolling down gives short sections on how it
 // works, what is inside, and who it is for, each kept to a line or two.
 //
+// Hero photo: public/images/hero-wedding.jpg, "Elegant wedding reception
+// tables with floral decorations" by Mathis Payet Descombes, Unsplash License
+// (https://unsplash.com/photos/FeO_txj9yVc).
+//
 // The two previews are simplified drawings of the Up Next screen, mostly grey
 // bars. The only words in them are the top items' titles, read from the live
 // store, so the picture always matches what the product will show.
@@ -138,11 +142,12 @@ export function Landing() {
   const items = attention.slice(0, 4)
 
   return (
-    <div className="flex min-h-dvh flex-col bg-canvas text-ink">
-      <header className="border-b border-line">
+    <div className="relative flex min-h-dvh flex-col bg-canvas text-ink">
+      {/* Transparent top bar, laid over the hero photo. */}
+      <header className="absolute inset-x-0 top-0 z-10 border-b border-white/15">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center px-4 md:px-8">
-          <span className="text-title font-light">Vue</span>
-          <Button href="/dashboard" variant="ghost" className="ml-auto">
+          <span className="text-title font-light text-white">Vue</span>
+          <Button href="/dashboard" variant="onDark" className="ml-auto">
             Open dashboard
           </Button>
         </div>
@@ -152,10 +157,10 @@ export function Landing() {
       {/* Full-bleed photo; the dark wash keeps the white type readable. */}
       <section
         className="relative isolate bg-ink bg-cover bg-center"
-        style={{ backgroundImage: `url(${asset('/images/hero-reception.jpg')})` }}
+        style={{ backgroundImage: `url(${asset('/images/hero-wedding.jpg')})` }}
       >
-        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
-      <div className="mx-auto grid w-full max-w-6xl content-center gap-12 px-4 py-16 md:px-8 lg:min-h-[calc(100dvh-3.5rem)] lg:grid-cols-[1fr_1.2fr] lg:items-center">
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/80 via-black/55 to-black/25" />
+      <div className="mx-auto grid w-full max-w-6xl content-center gap-12 px-4 pt-30 pb-16 md:px-8 lg:min-h-dvh lg:grid-cols-[1fr_1.2fr] lg:items-center lg:pt-14">
         <div>
           <h1 className="max-w-[16ch] text-title font-light text-balance text-white sm:text-display">
             Know what needs fixing before the wedding.
@@ -267,7 +272,7 @@ export function Landing() {
 
       <footer className="border-t border-line">
         <p className="mx-auto w-full max-w-6xl px-4 py-4 text-small text-ink-muted md:px-8">
-          Early prototype. All data is simulated.
+          Early prototype. All data is simulated. Photo by Mathis Payet Descombes on Unsplash.
         </p>
       </footer>
     </div>
