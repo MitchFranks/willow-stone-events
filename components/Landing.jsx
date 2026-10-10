@@ -3,15 +3,17 @@
 // ---------------------------------------------------------------------------
 // SCREEN 0 — Welcome.
 //
-// The one screen that is not the product. Its job is to say what Vue is in a
-// single breath and then get out of the way: one line, two buttons, and a
-// picture of the product on a laptop and a phone.
+// The one screen that is not the product. The first screenful says what Vue
+// is in a single breath: one line, two buttons, and a picture of the product
+// on a laptop and a phone. Scrolling down gives short sections on how it
+// works, what is inside, and who it is for, each kept to a line or two.
 //
 // The two previews are simplified drawings of the Up Next screen, mostly grey
 // bars. The only words in them are the top items' titles, read from the live
 // store, so the picture always matches what the product will show.
 // ---------------------------------------------------------------------------
 
+import Link from 'next/link'
 import { useStore } from '@/lib/store'
 import { cx } from '@/lib/cx'
 import { Button, Icon } from './ui/primitives'
@@ -99,6 +101,37 @@ function PhonePreview({ items }) {
   )
 }
 
+// ---- Below the fold: short sections that explain the product. ----
+
+const STEPS = [
+  { icon: 'search', title: 'Vue spots the problem', body: 'A declined shift, an unanswered couple, a payment due.' },
+  { icon: 'alert', title: 'You see why it matters', body: 'Which wedding it affects and how soon.' },
+  { icon: 'check', title: 'You fix it in one click', body: 'Every item comes with the button that solves it.' }
+]
+
+const FEATURES = [
+  { icon: 'list', title: 'Up Next', body: 'One list of everything that needs you, most urgent first.', href: '/up-next' },
+  { icon: 'users', title: 'Staffing Planner', body: 'See open spots, text your team, and track who said yes.', href: '/staffing' },
+  { icon: 'clock', title: 'Staff availability', body: 'Know who is free before you ask them to work.', href: '/staffing/team' },
+  { icon: 'calendar', title: 'Events', body: 'Weddings, rehearsal dinners and brunches, each with its own run of show.', href: '/events' },
+  { icon: 'mail', title: 'Messages', body: 'Couple, vendor and staff messages, filed to the right event.', href: '/messages' },
+  { icon: 'dollar', title: 'Payments & documents', body: 'Balances due and contracts waiting for a signature.', href: '/events/evt-1001/payments' }
+]
+
+const AUDIENCE = [
+  { title: 'Venue managers', body: 'See every wedding at a glance and stay ahead of the week.' },
+  { title: 'Event staff', body: 'Get one text with your shift, and answer yes or no.' }
+]
+
+function SectionHeading({ eyebrow, title }) {
+  return (
+    <div className="mb-10 max-w-2xl">
+      <p className="text-small font-medium text-accent">{eyebrow}</p>
+      <h2 className="mt-2 text-title font-light text-balance">{title}</h2>
+    </div>
+  )
+}
+
 export function Landing() {
   const { attention } = useStore()
   const items = attention.slice(0, 4)
@@ -114,12 +147,16 @@ export function Landing() {
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-6xl flex-1 content-center gap-12 px-4 py-16 md:px-8 lg:grid-cols-[1fr_1.2fr] lg:items-center">
+      <main className="flex-1">
+      <section className="mx-auto grid w-full lg:min-h-[calc(100dvh-3.5rem)] max-w-6xl content-center gap-12 px-4 py-16 md:px-8 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div>
+          <p className="mb-4 text-small font-medium text-accent">Wedding venue management</p>
           <h1 className="max-w-[16ch] text-title font-light text-balance sm:text-display">
             Know what needs fixing before the wedding.
           </h1>
-          <p className="mt-4 text-heading text-ink-muted">Staffing and loose ends for wedding venues.</p>
+          <p className="mt-4 max-w-md text-heading text-ink-muted">
+            Staff every event, answer every couple, and catch loose ends before the big day.
+          </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button href="/up-next" variant="primary" size="lg">
@@ -130,6 +167,11 @@ export function Landing() {
               Fill open positions
             </Button>
           </div>
+
+          <a href="#how-it-works" className="mt-10 inline-flex items-center gap-1.5 text-small text-ink-muted hover:text-ink">
+            How it works
+            <Icon name="chevronDown" size={14} />
+          </a>
         </div>
 
         {/* Product preview: laptop with a phone overlapping its corner. */}
@@ -147,6 +189,73 @@ export function Landing() {
             </div>
           </div>
         )}
+      </section>
+
+      {/* ------------------------------ how it works ----------------------------- */}
+      <section id="how-it-works" className="scroll-mt-4 border-t border-line">
+        <div className="mx-auto w-full max-w-6xl px-4 py-20 md:px-8">
+          <SectionHeading eyebrow="How it works" title="Problems come to you. You don't go looking." />
+          <ol className="grid gap-8 sm:grid-cols-3">
+            {STEPS.map((step, i) => (
+              <li key={step.title}>
+                <span className="grid h-10 w-10 place-items-center rounded-full border border-line-strong text-ink">
+                  <Icon name={step.icon} size={18} />
+                </span>
+                <p className="mt-4 text-label text-ink-muted">Step {i + 1}</p>
+                <h3 className="mt-1 text-heading font-medium">{step.title}</h3>
+                <p className="mt-1 text-body text-ink-muted">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* -------------------------------- features ------------------------------- */}
+      <section className="border-t border-line bg-surface">
+        <div className="mx-auto w-full max-w-6xl px-4 py-20 md:px-8">
+          <SectionHeading eyebrow="What's inside" title="Everything a wedding venue runs on, in one place." />
+          <ul className="grid gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map((f) => (
+              <li key={f.title} className="bg-surface">
+                <Link href={f.href} className="group block h-full p-6 transition-colors hover:bg-surface-sunken">
+                  <Icon name={f.icon} size={20} className="text-accent" />
+                  <h3 className="mt-4 flex items-center gap-1 text-heading font-medium">
+                    {f.title}
+                    <Icon name="chevronRight" size={14} className="text-ink-muted transition-transform group-hover:translate-x-0.5" />
+                  </h3>
+                  <p className="mt-1 text-body text-ink-muted">{f.body}</p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* -------------------------------- audience ------------------------------- */}
+      <section className="border-t border-line">
+        <div className="mx-auto w-full max-w-6xl px-4 py-20 md:px-8">
+          <SectionHeading eyebrow="Who it's for" title="Built for the people who run the day." />
+          <div className="grid gap-8 sm:grid-cols-2">
+            {AUDIENCE.map((a) => (
+              <div key={a.title} className="border-l-2 border-accent pl-5">
+                <h3 className="text-heading font-medium">{a.title}</h3>
+                <p className="mt-1 text-body text-ink-muted">{a.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------- closing CTA ----------------------------- */}
+      <section className="border-t border-line bg-surface">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-6 px-4 py-20 sm:flex-row sm:items-center sm:justify-between md:px-8">
+          <h2 className="max-w-lg text-title font-light text-balance">The Johnson Wedding is Saturday. Is it ready?</h2>
+          <Button href="/up-next" variant="primary" size="lg">
+            See what&apos;s up next
+            <Icon name="arrowRight" size={16} />
+          </Button>
+        </div>
+      </section>
       </main>
 
       <footer className="border-t border-line">
