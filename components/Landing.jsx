@@ -4,113 +4,155 @@
 // SCREEN 0 — Welcome.
 //
 // The one screen that is not the product. Its job is to say what Vue is in a
-// single breath and then get out of the way.
+// single breath and then get out of the way: one line, two buttons, and a
+// picture of the product on a laptop and a phone.
 //
-// Quiet and exact: warm stone, one light display line, one ink button, and
-// three live figures set large and light. The figures are read from the live
-// store rather than hard-coded, so this screen can never quote a number the
-// dashboard disagrees with. No photography, no decoration: the finish comes
-// from type, space and hairlines. See docs/STYLE-GUIDE.md.
+// The two previews are simplified drawings of the Up Next screen, mostly grey
+// bars. The only words in them are the top items' titles, read from the live
+// store, so the picture always matches what the product will show.
 // ---------------------------------------------------------------------------
 
-import Link from 'next/link'
 import { useStore } from '@/lib/store'
-import { events, venue } from '@/lib/mock/events'
+import { cx } from '@/lib/cx'
 import { Button, Icon } from './ui/primitives'
-import { UpNextItem } from './ui/domain'
+
+/** A grey placeholder line standing in for text. */
+function Bar({ className }) {
+  return <span className={cx('block h-1.5 rounded-full bg-line-strong', className)} />
+}
+
+/** One Up Next row: status dot, title (or a grey bar), and the action button. */
+function PreviewRow({ title, urgent, first, small = false }) {
+  return (
+    <div className={cx('flex items-center gap-2 border-b border-line last:border-b-0', small ? 'px-3 py-2.5' : 'px-4 py-3')}>
+      <span className={cx('h-2 w-2 shrink-0 rounded-full', urgent ? 'bg-status-now' : 'bg-status-soon')} />
+      {title ? (
+        <span className="min-w-0 flex-1 truncate text-label font-medium text-ink">{title}</span>
+      ) : (
+        <span className="flex-1">
+          <Bar className="w-full" />
+        </span>
+      )}
+      <span
+        className={cx(
+          'shrink-0 rounded-sm border px-2 py-0.5 font-medium',
+          small ? 'text-[10px]' : 'text-[11px]',
+          first ? 'border-ink bg-ink text-on-ink' : 'border-line-strong text-ink'
+        )}
+      >
+        Fix
+      </span>
+    </div>
+  )
+}
+
+function DesktopPreview({ items }) {
+  return (
+    <div className="overflow-hidden rounded-md border border-line-strong bg-surface shadow-raised">
+      {/* Browser chrome */}
+      <div className="flex items-center gap-1.5 border-b border-line bg-surface-sunken px-3 py-2">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="h-2 w-2 rounded-full bg-line-strong" />
+        ))}
+      </div>
+      <div className="flex">
+        {/* Sidebar */}
+        <div className="hidden w-28 shrink-0 space-y-3 border-r border-line p-3 sm:block">
+          <Bar className="w-12 bg-ink" />
+          <Bar className="w-16" />
+          <Bar className="w-14" />
+          <Bar className="w-10" />
+          <Bar className="w-16" />
+        </div>
+        {/* Up Next */}
+        <div className="min-w-0 flex-1 p-4">
+          <p className="mb-3 text-small font-medium text-ink">Up next</p>
+          <div className="rounded-sm border border-line">
+            {items.map((item, i) => (
+              <PreviewRow key={item.id} title={item.title} urgent={item.tone === 'urgent'} first={i === 0} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PhonePreview({ items }) {
+  return (
+    <div className="w-44 shrink-0 rounded-[1.75rem] border-4 border-ink bg-surface p-1.5 shadow-raised">
+      <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-line-strong" />
+      <div className="px-2 pb-1">
+        <p className="mb-2 text-[11px] font-medium text-ink">Up next</p>
+      </div>
+      <div className="overflow-hidden rounded-lg border border-line">
+        {items.map((item, i) => (
+          <PreviewRow key={item.id} small urgent={item.tone === 'urgent'} first={i === 0} />
+        ))}
+      </div>
+      <div className="mt-3 mb-1 flex justify-around px-2">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className={cx('h-1.5 w-5 rounded-full', i === 0 ? 'bg-ink' : 'bg-line-strong')} />
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export function Landing() {
-  const { attention, openPositions } = useStore()
-  const urgent = attention.filter((a) => a.tone === 'urgent').length
-  const preview = attention.slice(0, 3)
-
-  const figures = [
-    { value: events.length, label: 'Weddings & events' },
-    { value: urgent, label: 'To do first' },
-    { value: openPositions.length, label: 'Open positions' }
-  ]
+  const { attention } = useStore()
+  const items = attention.slice(0, 4)
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas text-ink">
-      {/* ------------------------------ header ------------------------------ */}
       <header className="border-b border-line">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-8 px-4 md:px-8">
-          <span className="flex items-baseline gap-3">
-            <span className="text-title font-light">Vue</span>
-            <span className="hidden text-small text-ink-muted sm:inline">Wedding venue operations</span>
-          </span>
-
+        <div className="mx-auto flex h-14 w-full max-w-6xl items-center px-4 md:px-8">
+          <span className="text-title font-light">Vue</span>
           <Button href="/dashboard" variant="ghost" className="ml-auto">
             Open dashboard
           </Button>
         </div>
       </header>
 
-      {/* ------------------------------- hero -------------------------------- */}
-      <main className="mx-auto grid w-full max-w-6xl flex-1 content-center gap-12 px-4 py-16 md:px-8 lg:grid-cols-2 lg:items-center">
+      <main className="mx-auto grid w-full max-w-6xl flex-1 content-center gap-12 px-4 py-16 md:px-8 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div>
-        <p className="text-small text-ink-muted">Wedding operations for {venue.name}</p>
+          <h1 className="max-w-[16ch] text-title font-light text-balance sm:text-display">
+            Know what needs fixing before the wedding.
+          </h1>
+          <p className="mt-4 text-heading text-ink-muted">Staffing and loose ends for wedding venues.</p>
 
-        <h1 className="mt-4 max-w-[18ch] text-title font-light text-balance sm:text-display">
-          See what needs you today, and fix it before the wedding.
-        </h1>
-
-        <p className="mt-6 max-w-prose text-heading text-ink-muted">
-          Vue finds the open staff positions, unanswered messages, unpaid balances and unsigned documents across your
-          weddings, and shows what to do about each one.
-        </p>
-
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Button href="/up-next" variant="primary" size="lg">
-            See what&apos;s up next
-            <Icon name="arrowRight" size={16} />
-          </Button>
-          <Button href="/staffing" variant="secondary" size="lg">
-            Fill open positions
-          </Button>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Button href="/up-next" variant="primary" size="lg">
+              See what&apos;s up next
+              <Icon name="arrowRight" size={16} />
+            </Button>
+            <Button href="/staffing" variant="secondary" size="lg">
+              Fill open positions
+            </Button>
+          </div>
         </div>
 
-        {/* Live figures, set large and light. */}
-        <dl className="mt-12 hidden grid-cols-3 border-t border-line lg:grid">
-          {figures.map((f, i) => (
-            <div key={f.label} className={i > 0 ? 'border-l border-line pl-6 pt-6' : 'pt-6'}>
-              <dt className="text-small text-ink-muted">{f.label}</dt>
-              <dd className="mt-1 text-display font-light tabular-nums">{f.value}</dd>
+        {/* Product preview: laptop with a phone overlapping its corner. */}
+        {items.length > 0 && (
+          <div role="img" aria-label="Vue's Up Next list on a computer and a phone">
+            {/* Small screens: just the phone. */}
+            <div aria-hidden="true" className="flex justify-center sm:hidden">
+              <PhonePreview items={items.slice(0, 3)} />
             </div>
-          ))}
-        </dl>
-        </div>
-
-        {/* ---- Preview: the real Up Next component, read-only, from live data. ---- */}
-        {preview.length > 0 && (
-          <section aria-label="Preview of the Up Next list">
-            <p className="mb-2 text-small text-ink-muted">What you&apos;ll see: your Up Next list</p>
-            <div
-              inert
-              className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface shadow-raised"
-            >
-              {preview.map((item, i) => (
-                <UpNextItem key={item.id} item={item} badge compact={i > 0} first={i === 0} />
-              ))}
+            <div aria-hidden="true" className="relative hidden pr-16 pb-10 sm:block">
+              <DesktopPreview items={items} />
+              <div className="absolute right-0 bottom-0">
+                <PhonePreview items={items.slice(0, 3)} />
+              </div>
             </div>
-            <p className="mt-3 text-small text-ink-muted">
-              Each item says what is wrong, which wedding it affects, and gives one button to fix it.{' '}
-              <Link href="/up-next" className="text-accent underline-offset-2 hover:underline">
-                Open the full list
-              </Link>
-            </p>
-          </section>
+          </div>
         )}
       </main>
 
-      {/* ------------------------------ footer ------------------------------- */}
       <footer className="border-t border-line">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-4 text-small text-ink-muted sm:flex-row sm:items-center sm:justify-between md:px-8">
-          <p>Prototype. Everything past this screen is simulated and is being tested for usability.</p>
-          <span>
-            {venue.manager} · {venue.today}
-          </span>
-        </div>
+        <p className="mx-auto w-full max-w-6xl px-4 py-4 text-small text-ink-muted md:px-8">
+          Early prototype. All data is simulated.
+        </p>
       </footer>
     </div>
   )
