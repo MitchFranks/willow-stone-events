@@ -16,7 +16,7 @@ export const metadata = {
     'Clickable prototype of an operations platform for wedding venues. Simulated data.',
   icons: {
     icon:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231c1b19'/%3E%3Ctext x='16' y='22.5' font-family='Helvetica,Arial,sans-serif' font-size='17' font-weight='300' fill='%23faf9f6' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E"
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231b1c1e'/%3E%3Ctext x='16' y='22.5' font-family='Helvetica,Arial,sans-serif' font-size='17' font-weight='300' fill='%23fafafa' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E"
   }
 }
 

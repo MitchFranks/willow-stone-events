@@ -6,7 +6,7 @@ in the running app. When the two disagree, the code wins — fix this document.
 
 **The feel:** quiet, exact and calm. Venue staff check Vue between tours, setups and phone calls,
 so they should never have to learn it. Luxury here means restraint, precision and calm, not
-ornament: warm stone neutrals, one light display line per screen, hairlines instead of heavy boxes,
+ornament: cool stone-grey neutrals, one light display line per screen, hairlines instead of heavy boxes,
 and colour only when it means something.
 
 ---
@@ -29,14 +29,14 @@ and colour only when it means something.
 
 | Token | Light | Dark | Used for |
 |---|---|---|---|
-| `canvas` | `#F3F1EC` | `#121211` | Page background. Warm stone, never pure white or black |
-| `surface` | `#FAF9F6` | `#1A1A18` | Cards, panels, inputs, modals |
-| `surface-sunken` | `#E9E6DF` | `#0C0C0B` | Wells: table headers, selected nav row, chips, empty fills |
-| `line` | `#E0DCD3` | `#2C2B28` | Hairlines between rows and around cards (decorative) |
-| `line-strong` | `#8F897E` | `#6E695F` | Borders of inputs, checkboxes and secondary buttons (3:1) |
-| `ink` | `#1C1B19` | `#ECEBE7` | Text and icons; the fill of primary buttons |
-| `ink-muted` | `#5C5850` | `#A39E94` | Secondary text: labels, metadata, helper text (5.6:1+) |
-| `on-ink` | `#FAF9F6` | `#121211` | Text on an ink fill |
+| `canvas` | `#F1F2F2` | `#121314` | Page background. Cool stone grey, never pure white or black |
+| `surface` | `#FAFAFA` | `#1A1B1D` | Cards, panels, inputs, modals |
+| `surface-sunken` | `#E6E7E8` | `#0C0D0E` | Wells: table headers, selected nav row, chips, empty fills |
+| `line` | `#DADCDE` | `#2B2D30` | Hairlines between rows and around cards (decorative) |
+| `line-strong` | `#878B8F` | `#6B7075` | Borders of inputs, checkboxes and secondary buttons (3:1) |
+| `ink` | `#1B1C1E` | `#ECEDEE` | Text and icons; the fill of primary buttons |
+| `ink-muted` | `#55595E` | `#9FA3A8` | Secondary text: labels, metadata, helper text (5.6:1+) |
+| `on-ink` | `#FAFAFA` | `#121314` | Text on an ink fill |
 | `accent` (Laurel) | `#2F4A3E` | `#9CC1AE` | Focus rings, selection, links, the "now" marker. Never a button fill |
 | `status-now` / `-soft` | `#A8361A` / `#F5E3DB` | `#F0896A` / `#3A1F17` | Act today: open positions, overdue, declined |
 | `status-soon` / `-soft` | `#7C5400` / `#F2E8D1` | `#DDB25A` / `#33280F` | Coming up this week, needs a look |
