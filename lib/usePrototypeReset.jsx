@@ -8,7 +8,7 @@ import { useStore } from '@/lib/store'
 import { useTimelineEdits } from '@/lib/timelineEdits'
 
 export function usePrototypeReset() {
-  const { reset: resetStore, toast } = useStore()
+  const { reset: resetStore } = useStore()
   const planner = useStaffing2()
   const { resetAll: resetTimelines } = useTimelineEdits()
   const { reset: resetIntro } = useOnboarding()
@@ -24,8 +24,7 @@ export function usePrototypeReset() {
         resetTimelines()
         planner.reset({ undoable: false, notify: false })
         resetStore()
-        resetIntro()
-        toast('The prototype is back to its starting state.')
+        resetIntro('/')
       }
     })
 
