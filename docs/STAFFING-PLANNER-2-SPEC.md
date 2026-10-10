@@ -372,7 +372,7 @@ Backup, declined and cancelled never count.
   - Event Staff stays at 0, so Jake's seed reason ("can't make a 3:00 PM call time") stays true.
 - **Done about** = the last block's `end`.
 - **Rule intervals** are computed **per block**, not first-to-last. A split day (Caleb 9–3 and 9–11 PM) does not overlap the Taylor setup (3–5:30 PM).
-- **The clock is frozen and simulated.** Base `2026-09-17T10:00` local, matching `TODAY_KEY`. Every user action increments `tick`, and `simNow = base + tick × 2 min`. So "asked 4 min ago" works and tests are deterministic.
+- **The clock is frozen and simulated.** Base `2026-10-10T10:00` local, matching `TODAY_KEY`. Every user action increments `tick`, and `simNow = base + tick × 2 min`. So "asked 4 min ago" works and tests are deterministic.
 - **Short notice** = under `SETTINGS.shortNoticeHours` (72) before the call time.
   - Johnson's call at 3:00 PM on Sat is 53 h from base, so it is short notice.
   - Confidence: Low. The figure comes from the 03 P6 suggestion (about 72 h).
@@ -502,8 +502,8 @@ Event Staff, Grounds and Venue Manager have **no default rule**. The only eviden
 ### D.2 Seed extras (`lib/staffing2/seed.js`)
 
 ```js
-export const BASE_NOW = '2026-09-17T10:00'          // matches TODAY_KEY
-export const SEED_SENT_AT = '2026-09-14T12:00'      // seed asks went out Mon
+export const BASE_NOW = '2026-10-10T10:00'          // matches TODAY_KEY
+export const SEED_SENT_AT = '2026-10-07T12:00'      // seed asks went out Wed
 export const SPACES = { 'garden-terrace': 'Garden Terrace', 'stone-hall': 'Stone Hall', courtyard: 'Courtyard', 'orchard-lawn': 'Orchard Lawn' }
 export const BLOCK_EXTRAS = {
   'johnson-setup': { spaceId: 'garden-terrace' }, 'johnson-ceremony': { spaceId: 'garden-terrace', guestStart: 15.5 },

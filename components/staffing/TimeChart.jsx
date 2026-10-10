@@ -13,7 +13,15 @@ import { cx } from '@/lib/cx'
 import { Icon } from '@/components/ui/primitives'
 import { coverage, firstName, fmtH, openSpotsText, rangeLabel, rolesOf } from '@/lib/staffing/derive'
 
-const PX_PER_HOUR = 32
+// The time axis is not a straight ruler. Each hour gets the height it needs:
+//   an hour with nothing in it folds up small
+//   an hour with a block in it gets a normal height
+//   an hour holding a short block stretches just enough for its words to fit
+// So a 30 minute block is readable without the whole day growing to match it.
+const EMPTY_HOUR_PX = 20
+const BUSY_HOUR_PX = 42
+const MIN_BAR_PX = 40
+const MAX_HOUR_PX = 110
 
 /** What a bar says: the state first, the count under it. */
 function headline(c) {
@@ -40,7 +48,27 @@ export function TimeChart({ eventId, blocks, roles, st }) {
   if (!blocks.length || !roles.length) return null
   const first = Math.floor(Math.min(...blocks.map((b) => b.start)))
   const last = Math.ceil(Math.max(...blocks.map((b) => b.end)))
-  const height = (last - first) * PX_PER_HOUR
+  // Pixels per hour, for each hour of the day on show.
+  const scale = Array.from({ length: last - first }, (_, i) => {
+    const h = first + i
+    const here = blocks.filter((b) => b.start < h + 1 && b.end > h)
+    if (!here.length) return EMPTY_HOUR_PX
+    let need = BUSY_HOUR_PX
+    for (const b of here) {
+      const inThisHour = Math.min(b.end, h + 1) - Math.max(b.start, h)
+      if (inThisHour < 1) need = Math.max(need, Math.min(MAX_HOUR_PX, Math.ceil(MIN_BAR_PX / inThisHour)))
+    }
+    return need
+  })
+  const cum = [0]
+  for (const v of scale) cum.push(cum[cum.length - 1] + v)
+  /** Where an hour-of-day (9.5 = 9:30 AM) sits on the page. */
+  const Y = (t) => {
+    const x = Math.min(Math.max(t - first, 0), last - first)
+    const i = Math.min(Math.floor(x), scale.length - 1)
+    return cum[i] + (x - i) * scale[i]
+  }
+  const height = cum[cum.length - 1]
   const hours = Array.from({ length: last - first + 1 }, (_, i) => first + i)
 
   const columns = roles.map((role) => {
@@ -77,7 +105,7 @@ export function TimeChart({ eventId, blocks, roles, st }) {
 
         <div className="relative" style={{ height }}>
           {hours.map((h) => (
-            <span key={h} className="absolute right-2 -translate-y-1/2 whitespace-nowrap text-label text-ink-muted" style={{ top: (h - first) * PX_PER_HOUR }}>
+            <span key={h} className="absolute right-2 -translate-y-1/2 whitespace-nowrap text-label text-ink-muted" style={{ top: Y(h) }}>
               {fmtH(h)}
             </span>
           ))}
@@ -85,7 +113,7 @@ export function TimeChart({ eventId, blocks, roles, st }) {
 
         <div className="relative border-l border-line" style={{ height }}>
           {hours.map((h) => (
-            <div key={h} className="absolute inset-x-0 border-t border-line" style={{ top: (h - first) * PX_PER_HOUR }} />
+            <div key={h} className="absolute inset-x-0 border-t border-line" style={{ top: Y(h) }} />
           ))}
           {segments.map(({ block, lane }) => (
             <button
@@ -95,8 +123,8 @@ export function TimeChart({ eventId, blocks, roles, st }) {
               title={`${block.name} ${rangeLabel(block.start, block.end)}`}
               className="absolute flex flex-col overflow-hidden rounded-md border border-line bg-surface-sunken px-2 py-1 text-left text-label leading-tight text-ink transition-colors hover:border-line-strong"
               style={{
-                top: (block.start - first) * PX_PER_HOUR + 2,
-                height: (block.end - block.start) * PX_PER_HOUR - 4,
+                top: Y(block.start) + 2,
+                height: Y(block.end) - Y(block.start) - 4,
                 left: `calc(${(lane / segLanes) * 100}% + 4px)`,
                 width: `calc(${100 / segLanes}% - 8px)`
               }}
@@ -110,12 +138,12 @@ export function TimeChart({ eventId, blocks, roles, st }) {
         {columns.map(({ role, laid, lanes }) => (
           <div key={role} className="relative border-l border-line" style={{ height }}>
             {hours.map((h) => (
-              <div key={h} className="absolute inset-x-0 border-t border-line" style={{ top: (h - first) * PX_PER_HOUR }} />
+              <div key={h} className="absolute inset-x-0 border-t border-line" style={{ top: Y(h) }} />
             ))}
             {laid.map(({ block, c, lane }) => {
               const done = c.confirmed >= c.need
               const open = c.toFind > 0
-              const tall = (block.end - block.start) * PX_PER_HOUR >= 70
+              const tall = Y(block.end) - Y(block.start) >= 70
               const names = Object.values(st.requests)
                 .filter((r) => r.eventId === eventId && r.role === role && (r.status === 'accepted' || r.status === 'pending') && r.confirmedBlockIds.includes(block.id))
                 .map((r) => firstName(r.staffId))
@@ -132,15 +160,15 @@ export function TimeChart({ eventId, blocks, roles, st }) {
                     !done && !open && 'border-line bg-surface-sunken text-ink-muted'
                   )}
                   style={{
-                    top: (block.start - first) * PX_PER_HOUR + 2,
-                    height: (block.end - block.start) * PX_PER_HOUR - 4,
+                    top: Y(block.start) + 2,
+                    height: Y(block.end) - Y(block.start) - 4,
                     left: `calc(${(lane / lanes) * 100}% + 4px)`,
                     width: `calc(${100 / lanes}% - 8px)`
                   }}
                 >
                   <span className="flex items-center gap-1 font-medium">
                     <Icon name={done ? 'check' : open ? 'plus' : 'clock'} size={10} />
-                    <span className="truncate">{headline(c)}</span>
+                    <span className="leading-tight">{headline(c)}</span>
                   </span>
                   <span className="truncate">
                     {c.filled} of {c.need}

@@ -37,7 +37,7 @@ export default function EventsPage() {
         title="Events"
         lead="Weddings and the events around them."
         actions={
-          <Button href="/events/new" variant="primary" size="md">
+          <Button href="/events/new" variant="primary" size="md" data-guide="new-event">
             <Icon name="plus" size={14} />
             New event
           </Button>
