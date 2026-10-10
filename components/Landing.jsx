@@ -158,7 +158,7 @@ export function Landing() {
   return (
     <div className="relative flex min-h-dvh flex-col bg-canvas text-ink">
       {/* Semi-transparent top bar over the hero photo: dark tint plus blur keeps it readable. */}
-      <header className="absolute inset-x-0 top-0 z-10 border-b border-white/15 bg-black/30 backdrop-blur-md">
+      <header className="absolute inset-x-0 top-0 z-10 bg-black/30 backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center px-4 md:px-8">
           <span className="text-title font-light text-white">Vue</span>
           <Button href="/dashboard" variant="onDark" className="ml-auto">
