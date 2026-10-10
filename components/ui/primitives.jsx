@@ -142,7 +142,9 @@ const BUTTON_VARIANTS = {
   primary: 'border-transparent bg-ink text-on-ink hover:bg-ink/85',
   secondary: 'border-line-strong bg-surface text-ink hover:bg-surface-sunken',
   danger: 'border-line-strong bg-surface text-status-now hover:bg-status-now-soft',
-  ghost: 'border-transparent bg-transparent text-ink hover:bg-surface-sunken'
+  ghost: 'border-transparent bg-transparent text-ink hover:bg-surface-sunken',
+  // Outline for use on top of a dark photo (the landing hero).
+  onDark: 'border-white/70 bg-transparent text-white hover:bg-white/10'
 }
 
 const BUTTON_SIZES = {

@@ -16,6 +16,7 @@
 import Link from 'next/link'
 import { useStore } from '@/lib/store'
 import { cx } from '@/lib/cx'
+import { asset } from '@/lib/asset'
 import { Button, Icon } from './ui/primitives'
 
 /** A grey placeholder line standing in for text. */
@@ -148,27 +149,32 @@ export function Landing() {
       </header>
 
       <main className="flex-1">
-      <section className="mx-auto grid w-full lg:min-h-[calc(100dvh-3.5rem)] max-w-6xl content-center gap-12 px-4 py-16 md:px-8 lg:grid-cols-[1fr_1.2fr] lg:items-center">
+      {/* Full-bleed photo; the dark wash keeps the white type readable. */}
+      <section
+        className="relative isolate bg-ink bg-cover bg-center"
+        style={{ backgroundImage: `url(${asset('/images/hero-reception.jpg')})` }}
+      >
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
+      <div className="mx-auto grid w-full max-w-6xl content-center gap-12 px-4 py-16 md:px-8 lg:min-h-[calc(100dvh-3.5rem)] lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div>
-          <p className="mb-4 text-small font-medium text-accent">Wedding venue management</p>
-          <h1 className="max-w-[16ch] text-title font-light text-balance sm:text-display">
+          <h1 className="max-w-[16ch] text-title font-light text-balance text-white sm:text-display">
             Know what needs fixing before the wedding.
           </h1>
-          <p className="mt-4 max-w-md text-heading text-ink-muted">
+          <p className="mt-4 max-w-md text-heading text-white/80">
             Staff every event, answer every couple, and catch loose ends before the big day.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button href="/up-next" variant="primary" size="lg">
+            <Button href="/up-next" variant="secondary" size="lg">
               See what&apos;s up next
               <Icon name="arrowRight" size={16} />
             </Button>
-            <Button href="/staffing" variant="secondary" size="lg">
+            <Button href="/staffing" variant="onDark" size="lg">
               Fill open positions
             </Button>
           </div>
 
-          <a href="#how-it-works" className="mt-10 inline-flex items-center gap-1.5 text-small text-ink-muted hover:text-ink">
+          <a href="#how-it-works" className="mt-10 inline-flex items-center gap-1.5 text-small text-white/70 hover:text-white">
             How it works
             <Icon name="chevronDown" size={14} />
           </a>
@@ -189,6 +195,7 @@ export function Landing() {
             </div>
           </div>
         )}
+      </div>
       </section>
 
       {/* ------------------------------ how it works ----------------------------- */}
