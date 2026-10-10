@@ -3,13 +3,14 @@
 // ---------------------------------------------------------------------------
 // Ask panel (spec §B.3). A dropdown lists the people in the role's pool who can
 // be asked, best fit first, so the user recognises a name instead of recalling
-// one. Picking several people for one spot is allowed: the first yes wins and later yeses
-// become Backups. A hard issue needs a reason before asking.
+// one. Picking several people for one spot is allowed: the first yes wins and
+// later yeses become Backups. A conflict (away, double-booked, no certificate)
+// needs a reason before asking.
 // ---------------------------------------------------------------------------
 
 import { useMemo, useState } from 'react'
-import { cx } from '@/lib/cx'
-import { Avatar, Button, Icon } from '@/components/ui/primitives'
+import { Modal } from '@/components/ui/domain'
+import { Alert, Avatar, Button, FilterChip, Icon, Select, StatusBadge, TextInput } from '@/components/ui/primitives'
 import { SETTINGS } from '@/lib/staffing/rules'
 import {
   blockById,
@@ -25,13 +26,12 @@ import {
 } from '@/lib/staffing/derive'
 import { useStaffing2 } from '@/lib/staffing/store'
 import { BlockToggles, CallTimeSelect, PickChips } from './controls'
-import { Drawer } from './Drawer'
 
 const GROUPS = [
-  ['backup', "Said they're free"],
+  ['backup', 'Backups: said yes earlier, ready to confirm'],
   ['good', 'Good fit'],
-  ['check', 'Check first'],
-  ['reason', 'Needs a reason'],
+  ['check', 'Heads up'],
+  ['reason', 'Conflict, needs a reason'],
   ['cant', "Can't be asked"]
 ]
 
@@ -74,13 +74,21 @@ export function AskPanel({ config, onClose, onAsk, hidden = false }) {
   })
 
   const byGroup = Object.fromEntries(GROUPS.map(([g]) => [g, ranked.filter((x) => x.group === g)]))
-  // The dropdown offers everyone who can be asked and has not been picked yet.
+  // The dropdown offers everyone who can be asked and has not been picked yet,
+  // best fit first. Each name carries its group, so a warning is seen before picking.
   const PICKABLE = [
-    ['good', 'Good fit'],
-    ['check', 'Check first'],
-    ['reason', 'Needs a reason']
+    ['good', 'good fit'],
+    ['check', 'heads up'],
+    ['reason', 'conflict']
   ]
-  const pickable = PICKABLE.map(([g, label]) => [g, label, byGroup[g].filter((x) => !ticked.includes(x.person.id))]).filter(([, , list]) => list.length)
+  const pickable = PICKABLE.flatMap(([g, label]) =>
+    byGroup[g]
+      .filter((x) => !ticked.includes(x.person.id))
+      .map((x) => ({
+        value: x.person.id,
+        label: `${x.person.name}${!x.person.roles.includes(role) ? ` (${x.person.roles.join(' · ')})` : ''} · ${label}`
+      }))
+  )
   const tickedRows = ranked.filter((x) => ticked.includes(x.person.id) && x.group !== 'cant' && x.group !== 'backup')
   const needReason = tickedRows.filter((x) => x.group === 'reason')
   // Spots still open (need minus confirmed), and how many are already being asked for them.
@@ -123,7 +131,7 @@ export function AskPanel({ config, onClose, onAsk, hidden = false }) {
   }
 
   const footer = (
-    <div className="space-y-2.5">
+    <div className="w-full space-y-2.5">
       {n > 0 && n + alreadyAsked > openSpots && (
         <p className="text-label text-ink-muted">
           {openSpots > 0
@@ -132,17 +140,16 @@ export function AskPanel({ config, onClose, onAsk, hidden = false }) {
         </p>
       )}
       {needReason.length > 0 && (
-        <div className="space-y-2 rounded-md border border-status-soon-soft bg-status-soon-soft/50 p-3">
-          <label htmlFor="ask-reason" className="block text-label font-medium text-ink">
-            Why is this OK for {needReason.map((x) => firstName(x.person.id)).join(' and ')}?
-          </label>
+        <div className="space-y-2 rounded-md border border-line-strong p-3">
+          <p className="text-small font-medium text-ink">Why is this fine for {needReason.map((x) => firstName(x.person.id)).join(' and ')}?</p>
           <PickChips options={['Checked with them', 'Times can flex']} value={reason} onChange={setReason} label="Quick reasons" />
-          <input
+          <TextInput
+            aria-label="Reason"
             id="ask-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Or type a reason"
-            className="block w-full rounded-sm border border-line-strong bg-surface px-3 py-2 text-body text-ink focus:border-accent"
+            hint="Needed before you can ask someone with a conflict."
           />
         </div>
       )}
@@ -168,66 +175,51 @@ export function AskPanel({ config, onClose, onAsk, hidden = false }) {
   )
 
   return (
-    <Drawer
+    <Modal
+      variant="sheet"
       open={!hidden}
       onClose={onClose}
-      title={backupsMode ? `Ask backups for ${role}` : `Ask for ${role}`}
+      title={backupsMode ? `Find a replacement ${role}` : `Ask for ${role}`}
       subtitle={`${ev.name} · ${ev.dateShort}`}
       footer={footer}
-      labelId="ask-panel-title"
+      labelledBy="ask-panel-title"
     >
       <div className="space-y-4">
         {backupsMode && config.dropped && (
-          <p className="rounded-md bg-surface-sunken px-3 py-2 text-label text-ink-muted">
+          <Alert tone="info">
             Replacing {firstName(config.dropped.staffId)}. Texts go out marked &quot;Short notice&quot; and ask for a reply within {SETTINGS.shortReplyByHours} hours.
-          </p>
+          </Alert>
         )}
         <div>
-          <span className="eyebrow mb-1.5 block text-ink">Working</span>
+          <span className="mb-1.5 block text-small text-ink-muted">Working</span>
           <BlockToggles blocks={blocks} selected={selBlocks} onChange={setSelBlocks} gaps={gapMap} />
         </div>
         <CallTimeSelect id="ask-call" startH={startH} value={offset} onChange={setOffset} />
         <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[180px] flex-1">
-            <label htmlFor="ask-pick" className="eyebrow block text-ink">
-              Who should we ask?
-            </label>
-            <select
-              id="ask-pick"
-              data-autofocus
-              value=""
-              onChange={(e) => {
-                if (e.target.value) setTicked((t) => (t.includes(e.target.value) ? t : [...t, e.target.value]))
-              }}
-              className="mt-1.5 block w-full rounded-sm border border-line-strong bg-surface px-3 py-2 text-body text-ink focus:border-accent"
-            >
-              <option value="">{pickable.length ? `Choose a ${allRoles ? 'person' : role}…` : 'Nobody left to pick'}</option>
-              {pickable.map(([g, label, list]) => (
-                <optgroup key={g} label={label}>
-                  {list.map((x) => (
-                    <option key={x.person.id} value={x.person.id}>
-                      {x.person.name}
-                      {!x.person.roles.includes(role) ? ` (${x.person.roles.join(' · ')})` : ''}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
-          <label className="flex items-center gap-2 pb-2.5 text-small text-ink">
-            <input type="checkbox" checked={allRoles} onChange={(e) => setAllRoles(e.target.checked)} className="h-4 w-4 accent-accent" />
+          <Select
+            label="Who should we ask?"
+            id="ask-pick"
+            data-autofocus
+            className="min-w-[180px] flex-1"
+            value=""
+            onChange={(e) => {
+              const id = e.target.value
+              if (id) setTicked((t) => (t.includes(id) ? t : [...t, id]))
+            }}
+            options={[{ value: '', label: pickable.length ? `Choose a ${allRoles ? 'person' : role}…` : 'Nobody left to pick' }, ...pickable]}
+          />
+          <FilterChip pressed={allRoles} onClick={() => setAllRoles(!allRoles)} className="mb-0.5">
             Show other roles
-          </label>
+          </FilterChip>
         </div>
 
         {!pickable.length && (
           <div>
-            <label htmlFor="ask-typed" className="eyebrow block text-ink">
-              Add a name
-            </label>
-            <div className="mt-1.5 flex gap-2">
-              <input
+            <div className="flex items-end gap-2">
+              <TextInput
+                label="Add a name"
                 id="ask-typed"
+                className="min-w-0 flex-1"
                 value={typedName}
                 onChange={(e) => setTypedName(e.target.value)}
                 onKeyDown={(e) => {
@@ -237,13 +229,12 @@ export function AskPanel({ config, onClose, onAsk, hidden = false }) {
                   }
                 }}
                 placeholder={`Type the ${role}'s name`}
-                className="block min-w-0 flex-1 rounded-sm border border-line-strong bg-surface px-3 py-2 text-body text-ink placeholder:text-ink-muted focus:border-accent"
               />
               <Button variant="secondary" disabled={!typedName.trim()} onClick={addTyped}>
                 Add
               </Button>
             </div>
-            <p className="mt-1.5 text-label text-ink-muted">Nobody else in the pool is free for this. Their availability is not known, so check with them.</p>
+            <p className="mt-1.5 text-small text-ink-muted">Nobody else on the team is free for this. Their availability is not known, so check with them.</p>
           </div>
         )}
 
@@ -252,11 +243,18 @@ export function AskPanel({ config, onClose, onAsk, hidden = false }) {
             <h3 className="text-small font-medium text-ink">To ask ({tickedRows.length})</h3>
             <ul className="mt-1.5 overflow-hidden rounded-md border border-line">
               {tickedRows.map((x) => (
-                <li key={x.person.id} className="flex min-h-[44px] items-start gap-3 border-b border-line bg-surface-sunken/40 px-3 py-2.5 last:border-b-0">
+                <li key={x.person.id} className="flex items-start gap-3 border-b border-line px-3 py-2.5 last:border-b-0">
                   <Avatar initials={x.person.initials} size="sm" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-body font-medium text-ink">{x.person.name}</span>
-                    <span className={cx('mt-0.5 block text-label', x.group === 'good' ? 'text-ink-muted' : 'text-ink')}>{describe(x)}</span>
+                    <span className="mt-0.5 block text-label text-ink-muted">
+                      {x.group !== 'good' && (
+                        <StatusBadge tone="warn" size="sm" className="mr-1.5">
+                          {x.group === 'reason' ? 'Conflict' : 'Heads up'}
+                        </StatusBadge>
+                      )}
+                      {describe(x)}
+                    </span>
                   </span>
                   <Button size="sm" variant="ghost" onClick={() => toggle(x.person.id)} aria-label={`Don't ask ${x.person.name}`}>
                     Remove
@@ -287,48 +285,29 @@ export function AskPanel({ config, onClose, onAsk, hidden = false }) {
           if (!list.length) return null
           const body = (
             <ul className="mt-1.5 overflow-hidden rounded-md border border-line">
-              {list.map((x) => {
-                const id = x.person.id
-                const on = ticked.includes(id)
-                const rowCls = cx('flex min-h-[44px] items-start gap-3 border-b border-line px-3 py-2.5 last:border-b-0', on && 'bg-surface-sunken/60')
-                const inner = (
-                  <>
-                    <Avatar initials={x.person.initials} size="sm" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-body font-medium text-ink">
-                        {x.person.name}
-                        {!x.person.roles.includes(role) && <span className="ml-1.5 text-label font-normal text-ink-muted">{x.person.roles.join(' · ')}</span>}
-                      </span>
-                      <span className={cx('mt-0.5 block text-label', g === 'good' || g === 'backup' ? 'text-ink-muted' : 'text-ink')}>{describe(x)}</span>
+              {list.map((x) => (
+                <li key={x.person.id} className="flex items-start gap-3 border-b border-line px-3 py-2.5 last:border-b-0">
+                  <Avatar initials={x.person.initials} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-body font-medium text-ink">
+                      {x.person.name}
+                      {!x.person.roles.includes(role) && <span className="ml-1.5 text-label font-normal text-ink-muted">{x.person.roles.join(' · ')}</span>}
                     </span>
-                  </>
-                )
-                if (g === 'cant') return <li key={id} className={rowCls}>{inner}</li>
-                if (g === 'backup') {
-                  return (
-                    <li key={id} className={rowCls}>
-                      {inner}
-                      <Button size="sm" onClick={() => { promote(x.existing.id); onClose() }}>
-                        Confirm
-                      </Button>
-                    </li>
-                  )
-                }
-                return (
-                  <li key={id}>
-                    <label className={cx(rowCls, 'cursor-pointer hover:bg-surface-sunken/40')}>
-                      <input
-                        type="checkbox"
-                        checked={on}
-                        onChange={() => toggle(id)}
-                        className="mt-2 h-4 w-4 shrink-0 accent-accent"
-                        aria-label={`Ask ${x.person.name}`}
-                      />
-                      {inner}
-                    </label>
-                  </li>
-                )
-              })}
+                    <span className="mt-0.5 block text-label text-ink-muted">{describe(x)}</span>
+                  </span>
+                  {g === 'backup' && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        promote(x.existing.id)
+                        onClose()
+                      }}
+                    >
+                      Confirm {firstName(x.person.id)}
+                    </Button>
+                  )}
+                </li>
+              ))}
             </ul>
           )
           if (g === 'cant') {
@@ -351,6 +330,6 @@ export function AskPanel({ config, onClose, onAsk, hidden = false }) {
           )
         })}
       </div>
-    </Drawer>
+    </Modal>
   )
 }

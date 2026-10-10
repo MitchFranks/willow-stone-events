@@ -1,31 +1,49 @@
 'use client'
 
-// SCREEN 15 — Staff Directory.
+// SCREEN 15 — Staff Directory. The people view: who works here, their role
+// and how to reach them, with request counts read from the Staffing Planner.
+// Availability and away dates are planned in Staffing Planner > Team; each
+// profile links to that person there.
 
 import { useState } from 'react'
-import { useStore } from '@/lib/store'
 import { ROLES, staff } from '@/lib/mock/staff'
+import { TODAY_KEY } from '@/lib/mock/events'
 import {
+  Avatar,
   Breadcrumbs,
   Button,
   Card,
   EmptyState,
   Icon,
+  ListRow,
   PageHeader,
   Select,
   StatusBadge,
   TextInput
 } from '@/components/ui/primitives'
-import { StaffCard } from '@/components/ui/domain'
+import { WORLD } from '@/lib/staffing/adapter'
+import { requestList } from '@/lib/staffing/derive'
+import { useStaffing2 } from '@/lib/staffing/store'
+
+/** Planner requests for upcoming events, counted by status. */
+function countsFor(staffId, st) {
+  const rs = requestList(st).filter((r) => r.staffId === staffId && WORLD.eventMap[r.eventId]?.dateKey >= TODAY_KEY)
+  return {
+    confirmed: rs.filter((r) => r.status === 'accepted').length,
+    waiting: rs.filter((r) => r.status === 'pending').length,
+    declined: rs.filter((r) => r.status === 'declined').length
+  }
+}
 
 export default function StaffDirectoryPage() {
-  const { assignmentsForStaff } = useStore()
+  const { state, hydrated } = useStaffing2()
   const [role, setRole] = useState('All roles')
   const [query, setQuery] = useState('')
 
-  const filtered = staff.filter(
+  const people = staff.map((p) => WORLD.staffMap[p.id] || { ...p, roles: [p.role] })
+  const filtered = people.filter(
     (p) =>
-      (role === 'All roles' || p.role === role) &&
+      (role === 'All roles' || p.roles.includes(role)) &&
       (query.trim() === '' || p.name.toLowerCase().includes(query.toLowerCase()))
   )
 
@@ -34,11 +52,11 @@ export default function StaffDirectoryPage() {
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Staff Directory' }]} />
       <PageHeader
         title="Staff directory"
-        lead={`${staff.length} people. Open anyone to see their availability, their shifts, and what they have accepted or declined.`}
+        lead="Everyone who works here and how to reach them. Open a person for their profile and the events they've been asked to work."
         actions={
-          <Button href="/staffing/team" variant="primary" size="md" data-guide="view-availability">
+          <Button href="/staffing/team" variant="secondary" size="md" data-guide="view-availability">
             <Icon name="clock" size={14} />
-            View availability
+            Availability and away dates
           </Button>
         }
       />
@@ -81,27 +99,35 @@ export default function StaffDirectoryPage() {
       ) : (
         <Card bodyClassName="px-0 py-0">
           {filtered.map((person) => {
-            const shifts = assignmentsForStaff(person.id)
-            const declined = shifts.filter((s) => s.status === 'declined').length
-            const pending = shifts.filter((s) => s.status === 'pending').length
+            const n = hydrated ? countsFor(person.id, state) : null
             return (
-              <StaffCard
+              <ListRow
                 key={person.id}
-                person={person}
-                shiftCount={shifts.length}
+                href={`/staff/${person.id}`}
+                leading={<Avatar initials={person.initials} />}
+                title={person.name}
+                sub={`${person.roles.join(' · ')} · ${person.phone}`}
+                meta={person.email}
                 trailing={
-                  <div className="hidden gap-1.5 sm:flex">
-                    {declined > 0 && (
-                      <StatusBadge tone="declined" size="sm">
-                        {declined} declined
-                      </StatusBadge>
-                    )}
-                    {pending > 0 && (
-                      <StatusBadge tone="pending" size="sm">
-                        {pending} pending
-                      </StatusBadge>
-                    )}
-                  </div>
+                  n && (
+                    <div className="hidden gap-1.5 sm:flex">
+                      {n.confirmed > 0 && (
+                        <StatusBadge tone="done" size="sm">
+                          {n.confirmed} confirmed
+                        </StatusBadge>
+                      )}
+                      {n.waiting > 0 && (
+                        <StatusBadge tone="pending" size="sm">
+                          {n.waiting} waiting
+                        </StatusBadge>
+                      )}
+                      {n.declined > 0 && (
+                        <StatusBadge tone="declined" size="sm">
+                          {n.declined} can&apos;t make it
+                        </StatusBadge>
+                      )}
+                    </div>
+                  )
                 }
               />
             )

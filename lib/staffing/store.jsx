@@ -260,11 +260,12 @@ export function Staffing2Provider({ children }) {
   }, [state, hydrated])
 
   const showToast = useCallback((t) => setToast({ id: Math.random().toString(36).slice(2), ...t }), [])
-  const dismissToast = useCallback(() => setToast(null), [])
+  // Pass the toast's id so a toast that replaced it (say "Undone.") stays up.
+  const dismissToast = useCallback((id) => setToast((t) => (id == null || t?.id === id ? null : t)), [])
 
   /**
    * Apply a mutation to a copy of the state. opts.undo keeps the previous
-   * state in the undo slot; opts.clearUndo empties it (sends, staff replies);
+   * state in the undo slot; opts.clearUndo empties it (sends, drop-outs);
    * opts.noTick leaves the sim clock alone (a staff member opening a text).
    */
   const commit = useCallback(
@@ -326,21 +327,29 @@ export function Staffing2Provider({ children }) {
           { clearUndo: true, toast: (sent, st) => sentToast(sent, st) }
         )
       },
-      /** Manager records a reply that came in by phone. */
+      /**
+       * Manager records a reply that came in some other way (a call, in
+       * person), or answers for staff in the prototype. Undoable.
+       */
       recordReply(id, yes, reason) {
         if (!req(id)) return undefined
         const name = firstName(req(id).staffId)
         return commit((st) => applyAnswer(st, id, yes, reason), {
           undo: true,
-          toast: (res) => ({
-            message:
-              res === 'accepted' ? `${name} is confirmed.` : res === 'backup' ? `${name} said yes but the spots are full, so ${name} is a backup.` : `Recorded: ${name} can't make it.`
-          })
+          toast: (res) => replyToast(name, res)
         })
       },
-      /** Staff phone reply. Not undoable: it is the staff member's act. */
+      /**
+       * Staff phone reply (the prototype's phone simulator). Undoable too, so a
+       * tester who taps the wrong answer for someone can take it back.
+       */
       answer(id, yes, reason) {
-        return commit((st) => applyAnswer(st, id, yes, reason), { clearUndo: true })
+        if (!req(id)) return undefined
+        const name = firstName(req(id).staffId)
+        return commit((st) => applyAnswer(st, id, yes, reason), {
+          undo: true,
+          toast: (res) => replyToast(name, res)
+        })
       },
       markSeen(id) {
         const r = req(id)
@@ -439,7 +448,7 @@ export function Staffing2Provider({ children }) {
             const issues = openIssues(r, st).filter((i) => i.severity !== 'info')
             r.overrides = [...r.overrides, ...issues.map((i) => ({ ruleId: i.ruleId, message: i.message, reason: reason || null, at: simNowIso(st) }))]
           },
-          { undo: true, toast: { message: `Marked ${name} as OK.` } }
+          { undo: true, toast: { message: `Noted: the warning for ${name} is fine.` } }
         )
       },
       saveNeeds(eventId, needsByBlock, edits) {
@@ -447,9 +456,19 @@ export function Staffing2Provider({ children }) {
           (st) => {
             for (const [blockId, roles] of Object.entries(needsByBlock)) st.needs[blockId] = { ...(st.needs[blockId] || {}), ...roles }
             st.eventEdits[eventId] = { ...(st.eventEdits[eventId] || {}), ...edits }
-            log(st, eventId, 'Needs updated')
+            log(st, eventId, 'Changed how many people are needed')
           },
-          { undo: true, toast: { message: 'Needs updated.' } }
+          { undo: true, toast: { message: 'Saved how many people you need.' } }
+        )
+      },
+      /** The guaranteed guest count sent to catering (the event's Tasks tab). */
+      setGuarantee(eventId, n) {
+        return commit(
+          (st) => {
+            st.eventEdits[eventId] = { ...(st.eventEdits[eventId] || {}), guaranteedCount: n }
+            log(st, eventId, `Guarantee set to ${n}`)
+          },
+          { undo: true }
         )
       },
       applySuggestion(eventId, blockId, role, n) {
@@ -541,12 +560,19 @@ export function Staffing2Provider({ children }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
+function replyToast(name, res) {
+  if (res === 'accepted') return { message: `${name} said yes and is confirmed.` }
+  if (res === 'backup') return { message: `${name} said yes, but the spots were already full, so ${name} is a backup.` }
+  if (res === 'reverted') return { message: `${name} can't do the new times, so ${name} keeps the old ones.` }
+  return { message: `${name} can't make it. The spot is open again.` }
+}
+
 function sentToast(ids, st) {
   const n = ids.filter((id) => st.requests[id]).length
   const firstAsk = ids.map((id) => st.requests[id]).find((r) => r && r.status !== 'cancelled')
   return {
     message: `Sent ${n} text${n === 1 ? '' : 's'}. Replies show up on this page.`,
-    small: "Texts can't be unsent. To change something, edit it and send an update.",
+    small: "Texts can't be unsent. In this prototype, answer for staff under each Waiting person.",
     phone: firstAsk ? firstAsk.staffId : null
   }
 }

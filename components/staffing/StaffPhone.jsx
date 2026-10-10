@@ -1,15 +1,16 @@
 'use client'
 
 // ---------------------------------------------------------------------------
-// Staff phone simulator (spec §B.8). Proves the loop: the manager sees the text
-// a person received, answers it as that person, and watches the reply land on
-// the event screen. Also exported as PhoneDrawer, fixed to one person.
+// Staff phone simulator (spec §B.8), a PROTOTYPE HELPER, not part of the
+// product. Proves the loop: the tester sees the text a person received,
+// answers it as that person, and watches the reply land on the event screen.
+// Also exported as PhoneDrawer (a sheet), fixed to one person.
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from 'react'
 import { venue } from '@/lib/mock/events'
-import { cx } from '@/lib/cx'
-import { Button, Icon, StatusBadge } from '@/components/ui/primitives'
+import { Modal } from '@/components/ui/domain'
+import { Avatar, Button, FilterChip, Icon, StatusBadge, Textarea } from '@/components/ui/primitives'
 import { WORLD } from '@/lib/staffing/adapter'
 import {
   MANAGER,
@@ -29,31 +30,20 @@ import { useStaffing2 } from '@/lib/staffing/store'
 import { TODAY_KEY } from '@/lib/mock/events'
 import { AwayDateForm } from './AwayDateForm'
 import { PickChips } from './controls'
-import { Drawer } from './Drawer'
 
 const REASONS = ['Another job', 'Sick', 'Family', 'Class or school', 'Other']
 const ASKS = ['ask', 'change', 'remind']
 
-function PillTabs({ value, onChange }) {
+function ViewChips({ value, onChange }) {
   return (
-    <div className="flex gap-1.5 rounded-full bg-surface-sunken p-1" role="tablist">
+    <div role="group" aria-label="Phone screen" className="flex gap-2">
       {[
         ['texts', 'Texts'],
         ['dates', 'My dates']
       ].map(([id, label]) => (
-        <button
-          key={id}
-          type="button"
-          role="tab"
-          aria-selected={value === id}
-          onClick={() => onChange(id)}
-          className={cx(
-            'flex-1 rounded-full px-3 py-1.5 text-label font-medium transition-colors',
-            value === id ? 'bg-ink text-on-ink' : 'text-ink-muted hover:text-accent'
-          )}
-        >
+        <FilterChip key={id} pressed={value === id} onClick={() => onChange(id)}>
           {label}
-        </button>
+        </FilterChip>
       ))}
     </div>
   )
@@ -81,7 +71,7 @@ function ReplyPage({ requestId, onDone }) {
   if (mode === 'result') {
     return (
       <div className="space-y-4 py-4 text-center">
-        <Icon name={result === 'declined' || result === 'reverted' ? 'info' : 'check'} size={22} className="mx-auto text-accent" />
+        <Icon name={result === 'declined' || result === 'reverted' ? 'info' : 'check'} size={22} className="mx-auto text-ink-muted" />
         <p className="text-body font-medium text-ink">
           {result === 'accepted'
             ? `You're confirmed. See you at ${call}.`
@@ -100,9 +90,9 @@ function ReplyPage({ requestId, onDone }) {
 
   return (
     <div className="space-y-3">
-      <button type="button" onClick={onDone} className="inline-flex items-center gap-1 text-label font-medium text-accent">
+      <Button size="sm" variant="ghost" onClick={onDone}>
         <Icon name="arrowLeft" size={12} /> Texts
-      </button>
+      </Button>
       <div>
         <p className="text-heading font-medium text-ink">{ev.name}</p>
         <p className="text-label text-ink-muted">
@@ -158,12 +148,12 @@ function ReplyPage({ requestId, onDone }) {
         <div className="space-y-3">
           <p className="text-label font-medium text-ink">Want to say why? (optional)</p>
           <PickChips options={REASONS} value={reason} onChange={setReason} label="Reason" />
-          <textarea
+          <Textarea
             aria-label="Note (optional)"
+            id={`phone-note-${r.id}`}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Add a note (optional)"
-            className="block w-full rounded-sm border border-line-strong bg-surface px-3 py-2 text-body text-ink focus:border-accent"
             rows={2}
           />
           <div className="flex gap-2">
@@ -241,13 +231,9 @@ function MyDates({ staffId }) {
                       </div>
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirming(r.id)}
-                      className="mt-1.5 text-label font-medium text-accent underline-offset-2 hover:underline"
-                    >
+                    <Button size="sm" className="mt-2" onClick={() => setConfirming(r.id)}>
                       Can&apos;t make it anymore?
-                    </button>
+                    </Button>
                   ))}
               </li>
             )
@@ -260,9 +246,9 @@ function MyDates({ staffId }) {
           {away.map((a) => (
             <li key={a.id} className="flex items-center justify-between gap-2 text-label text-ink">
               <span>{awayDateText(a)}</span>
-              <button type="button" onClick={() => removeAway(a.id)} className="font-medium text-accent hover:underline">
+              <Button size="sm" variant="ghost" onClick={() => removeAway(a.id)}>
                 Remove
-              </button>
+              </Button>
             </li>
           ))}
           {!away.length && <li className="text-label text-ink-muted">None yet.</li>}
@@ -288,16 +274,25 @@ export function StaffPhone({ staffId }) {
   const texts = state.messages.filter((m) => m.staffId === staffId)
 
   return (
-    <div className="surface-card mx-auto flex w-full max-w-[360px] flex-col border border-line sm:min-h-[640px]">
+    <div className="surface-card mx-auto flex w-full max-w-[360px] flex-col border-dashed border-line-strong sm:min-h-[640px]">
+      <p className="border-b border-dashed border-line-strong px-4 py-2 text-label text-ink-muted">
+        <span className="font-medium text-ink">Prototype only:</span> this pretends to be {firstName(staffId)}&apos;s phone.
+      </p>
       <div className="flex items-center gap-2 border-b border-line px-4 py-3">
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-sunken text-label font-medium text-ink">{person.initials}</span>
+        <Avatar initials={person.initials} size="sm" />
         <div className="min-w-0">
           <p className="text-small font-medium text-ink">{person.name}</p>
           <p className="text-label text-ink-muted">{person.phone}</p>
         </div>
       </div>
       <div className="px-4 pt-3">
-        <PillTabs value={tab} onChange={(t) => { setTab(t); setReplyTo(null) }} />
+        <ViewChips
+          value={tab}
+          onChange={(t) => {
+            setTab(t)
+            setReplyTo(null)
+          }}
+        />
       </div>
       <div className="flex-1 px-4 py-3">
         {tab === 'texts' ? (
@@ -317,16 +312,12 @@ export function StaffPhone({ staffId }) {
                     <p className="mb-1 text-label text-ink-muted">
                       {venue.name} · {stampLabel(m.at)}
                     </p>
-                    <div className="max-w-[92%] rounded-md rounded-tl-md bg-surface-sunken px-3 py-2.5 text-small leading-relaxed text-ink">
+                    <div className="max-w-[92%] rounded-md bg-surface-sunken px-3 py-2.5 text-small leading-relaxed text-ink">
                       {m.text}
                       {canAnswer && (
-                        <button
-                          type="button"
-                          onClick={() => setReplyTo(m.requestId)}
-                          className="mt-1.5 block font-medium text-accent underline underline-offset-2"
-                        >
+                        <Button size="sm" variant="primary" className="mt-2" onClick={() => setReplyTo(m.requestId)}>
                           Tap to answer
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </li>
@@ -342,21 +333,21 @@ export function StaffPhone({ staffId }) {
   )
 }
 
-/** The same phone in a right-hand drawer, fixed to one person. */
+/** The same phone in a right-hand sheet, fixed to one person. */
 export function PhoneDrawer() {
   const { phoneFor, closePhone } = useStaffing2()
   const person = phoneFor ? staffById(phoneFor) : null
   return (
-    <Drawer
+    <Modal
+      variant="sheet"
       open={!!person}
       onClose={closePhone}
-      modal={false}
-      title={person ? `${person.name.split(' ')[0]}'s phone` : ''}
-      subtitle="Simulated. Answer as them and watch the event screen update."
-      labelId="phone-drawer-title"
+      title={person ? `${firstName(person.id)}'s phone (prototype)` : ''}
+      subtitle="Answer as them, then close this to see the event update."
+      labelledBy="phone-drawer-title"
       width="sm:w-[420px]"
     >
       {person && <StaffPhone staffId={person.id} />}
-    </Drawer>
+    </Modal>
   )
 }

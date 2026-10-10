@@ -5,7 +5,6 @@
 import { use } from 'react'
 import { useStore } from '@/lib/store'
 import { coupleById } from '@/lib/mock/records'
-import { useOnboarding } from '@/components/onboarding/OnboardingProvider'
 import { events } from '@/lib/mock/events'
 import {
   Avatar,
@@ -18,15 +17,14 @@ import {
   PageHeader,
   StatusBadge
 } from '@/components/ui/primitives'
+import { openSpots } from '@/components/ui/domain'
 
 export default function CoupleDetailPage({ params }) {
   const { id } = use(params)
   const { messageList, attentionForEvent, coverageForEvent } = useStore()
-  // The first-run guide's couple lives in the browser, not in the mock data.
-  const { hydrated, couple: firstCouple } = useOnboarding()
-  const couple = coupleById(id) || (firstCouple?.id === id ? firstCouple : null)
+  const couple = coupleById(id)
 
-  if (!couple) return hydrated ? <EmptyState title="No such couple" /> : null
+  if (!couple) return <EmptyState title="No such couple" />
 
   const theirEvents = events.filter((e) => couple.eventIds.includes(e.id))
   const theirMessages = messageList.filter((m) => m.coupleId === couple.id)
@@ -61,7 +59,7 @@ export default function CoupleDetailPage({ params }) {
         <div className="space-y-4">
           <Card title="Their events" icon="calendar" bodyClassName="px-0 py-0">
             {theirEvents.length === 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
                 <p className="text-body text-ink-muted">No wedding booked yet.</p>
                 <Button href="/events/new" variant="primary" size="sm">
                   Book their wedding
@@ -80,13 +78,17 @@ export default function CoupleDetailPage({ params }) {
                   trailing={
                     <div className="hidden gap-1.5 sm:flex">
                       {needs > 0 && (
-                        <StatusBadge tone="pending" size="sm">
-                          {needs}
+                        <StatusBadge tone="urgent" size="sm">
+                          {needs} in Up Next
                         </StatusBadge>
                       )}
-                      {!cov.complete && (
+                      {cov.complete ? (
+                        <StatusBadge tone="done" size="sm">
+                          Fully staffed
+                        </StatusBadge>
+                      ) : (
                         <StatusBadge tone="warn" size="sm">
-                          Needs {cov.short} more
+                          {openSpots(cov.short)}
                         </StatusBadge>
                       )}
                     </div>
@@ -98,8 +100,9 @@ export default function CoupleDetailPage({ params }) {
 
           <Card title="Messages" icon="mail" bodyClassName="px-0 py-0">
             {theirMessages.length === 0 ? (
-              <p className="px-4 py-4 text-body text-ink-muted">No messages from this couple.</p>
+              <p className="px-4 py-4 text-body text-ink-muted sm:px-6">No messages from this couple.</p>
             ) : (
+              // Same status words and tones as the inbox.
               theirMessages.map((m) => (
                 <ListRow
                   key={m.id}
@@ -111,9 +114,13 @@ export default function CoupleDetailPage({ params }) {
                       <StatusBadge tone="done" size="sm">
                         Replied
                       </StatusBadge>
-                    ) : (
-                      <StatusBadge tone="urgent" size="sm">
+                    ) : m.needsReply ? (
+                      <StatusBadge tone={m.priority === 'urgent' ? 'urgent' : 'warn'} size="sm">
                         Needs reply
+                      </StatusBadge>
+                    ) : (
+                      <StatusBadge tone="info" size="sm">
+                        No reply needed
                       </StatusBadge>
                     )
                   }

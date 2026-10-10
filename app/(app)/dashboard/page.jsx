@@ -4,110 +4,120 @@
 // SCREEN 1 — Dashboard (entry screen).
 //
 // ENTRY SIGNIFIES THE CAPABILITY: the first line on the page states the product
-// promise in plain words, and the very next block is the attention queue. There
-// are no vanity metrics above it — the counters that do appear all describe
-// work, and each one is a link into that work.
+// promise in plain words, and the very next block is Up Next. There are no
+// vanity metrics above it — the counters below it all describe work, and each
+// one is a link into that work.
 // ---------------------------------------------------------------------------
 
 import Link from 'next/link'
 import { useStore } from '@/lib/store'
-import { events, venue } from '@/lib/mock/events'
-import { Button, Card, Icon, MetricTile, PageHeader, StatusBadge } from '@/components/ui/primitives'
-import { UpNextItem, EventCard } from '@/components/ui/domain'
+import { useStaffing2 } from '@/lib/staffing/store'
+import { agoLabel } from '@/lib/staffing/derive'
+import { events, eventById, venue } from '@/lib/mock/events'
+import { activityLog } from '@/lib/mock/records'
+import { Card, EmptyState, ListRow, MetricTile, PageHeader, StatusBadge } from '@/components/ui/primitives'
+import { UpNextItem, EventCard, openSpots } from '@/components/ui/domain'
+
+const LINK = 'text-small text-accent underline-offset-4 hover:underline'
 
 export default function DashboardPage() {
-  const { attention, openPositions, coverageForEvent, attentionForEvent, messageList, taskList } = useStore()
+  const { attention, openPositions, coverageForEvent, attentionForEvent, messageList } = useStore()
+  const { state: planner } = useStaffing2()
 
   const urgent = attention.filter((a) => a.tone === 'urgent')
   const soon = attention.filter((a) => a.tone !== 'urgent')
+  const spots = openPositions.reduce((n, p) => n + p.short, 0)
   const unreplied = messageList.filter((m) => m.needsReply && !m.replied).length
-  const openTasks = taskList.filter((t) => !t.done).length
+  const tasksDue = attention.filter((a) => a.kind === 'task').length
   const upcoming = events.slice(0, 3)
+
+  // Recent activity, derived from real state so every line can be found again
+  // where it lives: planner replies and asks first (newest), then the sample
+  // activity log. A log entry links to its message when there is one.
+  const recent = [
+    ...(planner.activity || []).slice(0, 3).map((a) => ({
+      id: a.id,
+      title: eventById(a.eventId)?.name || 'Staffing Planner',
+      text: a.text,
+      when: agoLabel(a.at, planner),
+      href: `/staffing/${a.eventId}`
+    })),
+    ...activityLog.map((h) => {
+      const message = messageList.find((m) => m.from === h.who && m.eventId === h.eventId)
+      return {
+        id: h.id,
+        title: h.who,
+        text: h.what,
+        when: `${h.when} · ${eventById(h.eventId)?.name || 'No event'}`,
+        href: message ? `/messages/${message.id}` : `/events/${h.eventId}`
+      }
+    })
+  ]
 
   return (
     <div>
       <PageHeader
         title="Here's what to tackle next across your weddings."
-        lead={`${venue.name} · ${venue.today}. Everything below is ordered so the most useful thing to do comes first.`}
-        actions={
-          <Button href="/up-next" variant="primary" size="md">
-            See what's up next
-            <Icon name="arrowRight" size={14} />
-          </Button>
-        }
+        lead={`${venue.name} · ${venue.today}`}
       />
 
+      {/* ---- Up Next. First and visually dominant by design. ---- */}
+      <section className="mb-8">
+        {attention.length === 0 ? (
+          <EmptyState title="All caught up" body="Nothing needs you right now. Every event is fully staffed." />
+        ) : (
+          <Card
+            title="Up Next"
+            icon="inbox"
+            subtitle={urgent.length ? `${urgent.length} to do first` : `${attention.length} coming up`}
+            action={
+              <Link href="/up-next" className={LINK}>
+                See everything ({attention.length})
+              </Link>
+            }
+            bodyClassName="px-0 py-0"
+          >
+            <div className="divide-y divide-line">
+              {urgent.slice(0, 3).map((item, i) => (
+                <UpNextItem key={item.id} item={item} badge first={i === 0} />
+              ))}
+              {soon.slice(0, 2).map((item, i) => (
+                <UpNextItem key={item.id} item={item} badge compact first={urgent.length === 0 && i === 0} />
+              ))}
+            </div>
+          </Card>
+        )}
+      </section>
+
       {/* Counters that describe WORK, not vanity metrics. Each is a route in. */}
-      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <MetricTile
-          label="Up next"
-          value={urgent.length}
-          tone={attention.length ? 'accent' : 'done'}
-          sub={`to do first ·  coming up`}
-          href="/up-next"
-        />
-        <MetricTile
-          label="Open positions"
-          value={openPositions.length}
-          tone={openPositions.length ? 'accent' : 'done'}
-          sub={openPositions.length ? 'Positions to fill' : 'Every position filled'}
+          label="Open spots"
+          value={spots}
+          tone={spots ? 'urgent' : 'done'}
+          sub={spots ? 'Across your upcoming events' : 'Every event is fully staffed'}
           href="/staffing"
         />
         <MetricTile
           label="Awaiting reply"
           value={unreplied}
-          tone={unreplied ? 'accent' : 'done'}
+          tone={unreplied ? undefined : 'done'}
           sub="Couple and vendor messages"
           href="/messages"
         />
-        <MetricTile label="Open tasks" value={openTasks} sub="Across all events" href="/events/evt-1001/tasks" />
+        <MetricTile label="Tasks due" value={tasksDue} sub="In Up Next, across all events" href="/up-next?kind=task" />
       </div>
 
-      {/* ---- THE up-next block. Visually dominant by design. ---- */}
-      <section className="mb-6">
-        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="flex items-center gap-2 text-heading font-medium text-ink">
-              <Icon name="list" size={17} className="text-accent" />
-              Up next
-            </h2>
-            <p className="mt-0.5 text-label text-ink-muted">
-              Picked for you automatically. Each item says what happened, why it matters and what to do.
-            </p>
-          </div>
-          <Link href="/up-next" className="text-label text-accent underline-offset-2 hover:underline">
-            See everything ({attention.length})
-          </Link>
-        </div>
-
-        {attention.length === 0 ? (
-          <Card>
-            <p className="py-4 text-center text-body text-ink-muted">
-              You&apos;re all caught up. Every event is fully staffed.
-            </p>
-          </Card>
-        ) : (
-          <div className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface shadow-raised">
-            {urgent.slice(0, 3).map((item, i) => (
-              <UpNextItem key={item.id} item={item} first={i === 0} />
-            ))}
-            {soon.slice(0, 2).map((item, i) => (
-              <UpNextItem key={item.id} item={item} compact first={urgent.length === 0 && i === 0} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         {/* ---- Upcoming events ---- */}
         <section>
-          <div className="mb-2 flex items-end justify-between gap-2">
+          <div className="mb-3 flex items-end justify-between gap-2">
             <h2 className="text-heading font-medium text-ink">Upcoming events</h2>
-            <Link href="/events" className="text-label text-accent underline-offset-2 hover:underline">
+            <Link href="/events" className={LINK}>
               All events
             </Link>
           </div>
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {upcoming.map((event) => (
               <EventCard
                 key={event.id}
@@ -119,76 +129,51 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ---- Staffing coverage at a glance ---- */}
-        <section>
-          <div className="mb-2 flex items-end justify-between gap-2">
-            <h2 className="text-heading font-medium text-ink">Staffing status</h2>
-            <Link href="/staffing" className="text-label text-accent underline-offset-2 hover:underline">
-              Weekly schedule
-            </Link>
-          </div>
-          <Card bodyClassName="px-0 py-0">
+        <div className="space-y-6">
+          {/* ---- Staffing coverage at a glance ---- */}
+          <Card
+            title="Staffing status"
+            icon="users"
+            action={
+              <Link href="/staffing" className={LINK}>
+                Staffing Planner
+              </Link>
+            }
+            bodyClassName="px-0 py-0"
+          >
             {events.map((event) => {
               const cov = coverageForEvent(event.id)
               return (
-                <Link
+                <ListRow
                   key={event.id}
                   href={`/staffing/${event.id}`}
-                  className="flex items-center gap-3 border-b border-line px-3 py-2.5 last:border-b-0 hover:bg-surface-sunken"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-body font-medium text-ink">{event.name}</div>
-                    <div className="mt-0.5 text-label text-ink-muted">
-                      {cov.filled} of {cov.required} roles confirmed
-                      {cov.pending > 0 && ` · ${cov.pending} pending`}
-                    </div>
-                    {/* Placeholder-style coverage bar — wireframe, not a chart. */}
-                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-pill border border-line bg-surface-sunken">
-                      <div
-                        className={cx2(cov.complete ? 'bg-status-clear' : 'bg-status-now', 'h-full')}
-                        style={{ width: `${cov.required ? (cov.filled / cov.required) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                  {cov.complete ? (
-                    <StatusBadge tone="done" size="sm">
-                      OK
-                    </StatusBadge>
-                  ) : (
-                    <StatusBadge tone="urgent" size="sm">
-                      -{cov.short}
-                    </StatusBadge>
-                  )}
-                </Link>
+                  title={event.name}
+                  sub={`${cov.filled} of ${cov.required} spots confirmed${cov.pending > 0 ? ` · ${cov.pending} waiting` : ''}`}
+                  trailing={
+                    cov.complete ? (
+                      <StatusBadge tone="done" size="sm">
+                        Fully staffed
+                      </StatusBadge>
+                    ) : (
+                      <StatusBadge tone="urgent" size="sm">
+                        {openSpots(cov.short)}
+                      </StatusBadge>
+                    )
+                  }
+                />
               )
             })}
           </Card>
 
-          <div className="mt-3">
-            <Card title="Today" subtitle={venue.today} icon="calendar">
-              <ul className="space-y-2 text-label">
-                <li className="flex gap-2">
-                  <span className="w-16 shrink-0 font-medium text-ink">8:42 AM</span>
-                  <span className="text-ink-muted">Emily Johnson asked to move decorating to 9:00 AM</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="w-16 shrink-0 font-medium text-ink">7:15 AM</span>
-                  <span className="text-ink-muted">Harvest Table asked for the guarantee</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="w-16 shrink-0 font-medium text-ink">Yesterday</span>
-                  <span className="text-ink-muted">Jake Pearson declined the Johnson ceremony assignment</span>
-                </li>
-              </ul>
-            </Card>
-          </div>
-        </section>
+          <Card title="Recent activity" subtitle="Newest first" bodyClassName="px-0 py-0">
+            {recent.length === 0 ? (
+              <p className="px-4 py-4 text-small text-ink-muted sm:px-6">Nothing yet.</p>
+            ) : (
+              recent.map((r) => <ListRow key={r.id} href={r.href} title={r.title} sub={r.when} meta={r.text} />)
+            )}
+          </Card>
+        </div>
       </div>
     </div>
   )
-}
-
-// Tiny local helper so this file does not need the cx import for one use.
-function cx2(...parts) {
-  return parts.filter(Boolean).join(' ')
 }

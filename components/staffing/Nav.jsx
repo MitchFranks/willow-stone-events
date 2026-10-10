@@ -1,7 +1,7 @@
 'use client'
 
-// Staffing Planner tab bar: Events · Team · Staff phone. Shown on the list,
-// Team and phone screens. The event screen is reached from Events and returns
+// Staffing Planner tab bar: Events · Team · Staff phone (prototype). Shown on
+// the list, Team and phone screens. The event screen is reached from Events and returns
 // by breadcrumb, so no tab ever changes meaning (spec §B).
 
 import { usePathname } from 'next/navigation'
@@ -16,7 +16,7 @@ export function Staffing2Nav() {
       tabs={[
         { id: 'events', label: 'Events', href: '/staffing' },
         { id: 'team', label: 'Team', href: '/staffing/team' },
-        { id: 'phone', label: 'Staff phone', href: '/staffing/phone' }
+        { id: 'phone', label: 'Staff phone (prototype)', href: '/staffing/phone' }
       ]}
     />
   )

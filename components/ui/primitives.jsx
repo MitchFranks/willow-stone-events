@@ -21,7 +21,12 @@ import { cx } from '@/lib/cx'
 /* ------------------------------------------------------------------ Icon -- */
 // One outline set: 1.5px stroke on a 24px grid, drawn in the current text
 // colour. Status icons have fixed jobs: alert = act now, clock = coming up,
-// check = handled.
+// check = handled. Never use a status icon as a navigation icon.
+//
+// Navigation icons, one per destination (do not reuse across destinations):
+//   inbox Up Next · users Staffing Planner · home Dashboard · list Events ·
+//   user Staff Directory · calendar Calendar · mail Messages · heart Couples ·
+//   truck Vendors · settings Settings · menu the mobile nav toggle.
 
 const PATHS = {
   alert: <path d="M12 3.6 2.8 19.6h18.4L12 3.6Zm0 5.8v4.4m0 3h.01" />,
@@ -108,7 +113,29 @@ const PATHS = {
     </>
   ),
   send: <path d="M21.5 2.5 2.5 9.2l8 3.8 3.8 8 7.2-18.5Z" />,
-  home: <path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z" />
+  home: <path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z" />,
+  inbox: (
+    <>
+      <path d="M3 13.5 5.5 5h13l2.5 8.5V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" />
+      <path d="M3 13.5h5l1.5 2.5h5l1.5-2.5h5" />
+    </>
+  ),
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2.8v2.4m0 13.6v2.4M2.8 12h2.4m13.6 0h2.4M5.5 5.5l1.7 1.7m9.6 9.6 1.7 1.7M5.5 18.5l1.7-1.7m9.6-9.6 1.7-1.7" />
+    </>
+  ),
+  refresh: <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4.5V11h-6.5" />,
+  book: <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5Zm16 0A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5Z" />,
+  heart: <path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10Z" />,
+  phone: (
+    <>
+      <rect x="6.5" y="2.8" width="11" height="18.4" rx="1.5" />
+      <path d="M11 18h2" />
+    </>
+  )
 }
 
 export function Icon({ name, size = 16, className = '' }) {
@@ -142,7 +169,9 @@ const BUTTON_VARIANTS = {
   primary: 'border-transparent bg-ink text-on-ink hover:bg-ink/85',
   secondary: 'border-line-strong bg-surface text-ink hover:bg-surface-sunken',
   danger: 'border-line-strong bg-surface text-status-now hover:bg-status-now-soft',
-  ghost: 'border-transparent bg-transparent text-ink hover:bg-surface-sunken'
+  ghost: 'border-transparent bg-transparent text-ink hover:bg-surface-sunken',
+  // Outline for use on top of the landing hero's dark photo (or its placeholder).
+  onDark: 'border-white/70 bg-transparent text-white hover:bg-white/10'
 }
 
 const BUTTON_SIZES = {
@@ -186,6 +215,11 @@ export function Button({
 /* ----------------------------------------------------------- StatusBadge -- */
 // The triage language. NEVER COLOUR ALONE: tone -> {colours, glyph, default
 // label}. Callers may pass their own words but can never drop the glyph.
+//
+// One vocabulary, product-wide (see docs/STYLE-GUIDE.md):
+//   a staff request is   Not sent · Waiting · Confirmed · Can't make it
+//   an unfilled role is  an "open spot"; a count reads "N open spots";
+//                        a fully covered event reads "Fully staffed".
 //   urgent   status-now    act today or it slips
 //   warn     status-soon   coming up this week
 //   done     status-clear  handled or on track
@@ -194,10 +228,10 @@ export function Button({
 const TONES = {
   urgent: { cls: 'bg-status-now-soft text-status-now', icon: 'alert', label: 'Urgent' },
   warn: { cls: 'bg-status-soon-soft text-status-soon', icon: 'clock', label: 'Due soon' },
-  pending: { cls: 'bg-surface-sunken text-ink-muted', icon: 'clock', label: 'Pending' },
+  pending: { cls: 'bg-surface-sunken text-ink-muted', icon: 'clock', label: 'Waiting' },
   done: { cls: 'bg-status-clear-soft text-status-clear', icon: 'check', label: 'Confirmed' },
   info: { cls: 'bg-surface-sunken text-ink-muted', icon: 'info', label: 'Info' },
-  declined: { cls: 'bg-status-now-soft text-status-now', icon: 'x', label: 'Declined' },
+  declined: { cls: 'bg-status-now-soft text-status-now', icon: 'x', label: "Can't make it" },
   empty: { cls: 'bg-surface-sunken text-ink-muted', icon: 'dash', label: 'Unassigned' }
 }
 
@@ -331,6 +365,39 @@ export function Count({ tone, children }) {
   )
 }
 
+/* ------------------------------------------------------------ FilterChip -- */
+// A toggle in a row of filters. Pills mean state: a pressed chip takes the
+// accent (border and text on a sunken fill), an unpressed one is a quiet
+// outline. Always a real button with aria-pressed.
+
+export function FilterChip({ pressed = false, onClick, count, children, className = '' }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cx(
+        'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-small font-medium transition-colors duration-150',
+        pressed ? 'border-accent bg-surface-sunken text-accent' : 'border-line bg-surface text-ink hover:border-line-strong hover:bg-surface-sunken',
+        className
+      )}
+    >
+      {children}
+      {count != null && <span className="font-mono tabular-nums opacity-70">{count}</span>}
+    </button>
+  )
+}
+
+/** A labelled row of FilterChips. */
+export function FilterGroup({ label, children }) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap items-center gap-2">
+      <span className="text-small text-ink-muted">{label}</span>
+      {children}
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------ EmptyState -- */
 
 export function EmptyState({ title, body, action, icon = 'check' }) {
@@ -446,47 +513,79 @@ export function Avatar({ initials, size = 'md' }) {
 const LABEL = 'mb-1.5 block text-small text-ink-muted'
 const CONTROL =
   'block w-full rounded-sm border border-line-strong bg-surface px-3 text-body text-ink placeholder:text-ink-muted/70 transition-colors focus:border-accent focus-visible:outline-offset-0'
+const CONTROL_ERROR = 'border-status-now focus:border-status-now'
 const HINT = 'mt-1.5 text-small text-ink-muted'
+const ERROR = 'mt-1.5 flex items-center gap-1 text-small text-status-now'
 
-export function TextInput({ label, id, hint, className = '', ...rest }) {
+/**
+ * Label, control, then either an error (status-now, with a glyph, announced)
+ * or a hint. Pass `error` to show a validation message; it replaces the hint.
+ * `label` may be omitted only when `aria-label` is passed instead.
+ */
+function FormField({ label, id, hint, error, className, children }) {
   return (
     <div className={className}>
-      <label htmlFor={id} className={LABEL}>
-        {label}
-      </label>
-      <input id={id} className={cx(CONTROL, 'h-9')} {...rest} />
-      {hint && <p className={HINT}>{hint}</p>}
+      {label && (
+        <label htmlFor={id} className={LABEL}>
+          {label}
+        </label>
+      )}
+      {children}
+      {error ? (
+        <p id={`${id}-error`} className={ERROR} role="alert">
+          <Icon name="alert" size={13} />
+          {error}
+        </p>
+      ) : (
+        hint && (
+          <p id={`${id}-hint`} className={HINT}>
+            {hint}
+          </p>
+        )
+      )}
     </div>
   )
 }
 
-export function Select({ label, id, options = [], hint, className = '', ...rest }) {
+function controlProps(id, hint, error) {
+  return {
+    id,
+    'aria-invalid': error ? true : undefined,
+    'aria-describedby': error ? `${id}-error` : hint ? `${id}-hint` : undefined
+  }
+}
+
+export function TextInput({ label, id, hint, error, className = '', inputClassName = '', ...rest }) {
   return (
-    <div className={className}>
-      <label htmlFor={id} className={LABEL}>
-        {label}
-      </label>
-      <select id={id} className={cx(CONTROL, 'h-9')} {...rest}>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
+    <FormField label={label} id={id} hint={hint} error={error} className={className}>
+      <input {...controlProps(id, hint, error)} className={cx(CONTROL, 'h-9', error && CONTROL_ERROR, inputClassName)} {...rest} />
+    </FormField>
+  )
+}
+
+/** `options` may be strings or { value, label } objects. */
+export function Select({ label, id, options = [], hint, error, className = '', inputClassName = '', ...rest }) {
+  return (
+    <FormField label={label} id={id} hint={hint} error={error} className={className}>
+      <select {...controlProps(id, hint, error)} className={cx(CONTROL, 'h-9', error && CONTROL_ERROR, inputClassName)} {...rest}>
+        {options.map((o) => {
+          const opt = typeof o === 'string' ? { value: o, label: o } : o
+          return (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          )
+        })}
       </select>
-      {hint && <p className={HINT}>{hint}</p>}
-    </div>
+    </FormField>
   )
 }
 
-export function Textarea({ label, id, hint, className = '', ...rest }) {
+export function Textarea({ label, id, hint, error, className = '', inputClassName = '', ...rest }) {
   return (
-    <div className={className}>
-      <label htmlFor={id} className={LABEL}>
-        {label}
-      </label>
-      <textarea id={id} className={cx(CONTROL, 'py-2 leading-6')} {...rest} />
-      {hint && <p className={HINT}>{hint}</p>}
-    </div>
+    <FormField label={label} id={id} hint={hint} error={error} className={className}>
+      <textarea {...controlProps(id, hint, error)} className={cx(CONTROL, 'py-2 leading-6', error && CONTROL_ERROR, inputClassName)} {...rest} />
+    </FormField>
   )
 }
 

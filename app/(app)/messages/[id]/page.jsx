@@ -33,6 +33,7 @@ export default function MessageDetailPage({ params }) {
   const { messageList, markReplied, markRead, toast } = useStore()
   const live = messageList.find((m) => m.id === id)
   const [draft, setDraft] = useState(base?.suggestedReply || '')
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (base) markRead(base.id)
@@ -45,7 +46,7 @@ export default function MessageDetailPage({ params }) {
 
   function send() {
     if (!draft.trim()) {
-      toast('Write something before sending.', 'urgent')
+      setError('Write something before sending.')
       return
     }
     markReplied(base.id)
@@ -71,7 +72,7 @@ export default function MessageDetailPage({ params }) {
           ) : base.needsReply ? (
             <StatusBadge tone={base.priority === 'urgent' ? 'urgent' : 'warn'}>Needs reply</StatusBadge>
           ) : (
-            <StatusBadge tone="info">No action needed</StatusBadge>
+            <StatusBadge tone="info">No reply needed</StatusBadge>
           )
         }
       />
@@ -120,14 +121,21 @@ export default function MessageDetailPage({ params }) {
                 id="reply"
                 rows={9}
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                error={error}
+                onChange={(e) => {
+                  setDraft(e.target.value)
+                  if (error) setError('')
+                }}
               />
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button variant="primary" size="md" onClick={send}>
                   <Icon name="send" size={14} />
                   Send reply
                 </Button>
-                <Button variant="secondary" size="md" onClick={() => setDraft(base.suggestedReply || '')}>
+                <Button variant="secondary" size="md" onClick={() => {
+                    setDraft(base.suggestedReply || '')
+                    setError('')
+                  }}>
                   Reset draft
                 </Button>
                 <Button href="/messages" variant="secondary" size="md">
