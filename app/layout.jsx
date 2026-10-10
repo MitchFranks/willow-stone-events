@@ -2,6 +2,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { StoreProvider } from '@/lib/store'
+import { Staffing2Provider } from '@/lib/staffing/store'
 import { TimelineEditsProvider } from '@/lib/timelineEdits'
 import { OnboardingProvider } from '@/components/onboarding/OnboardingProvider'
 
@@ -24,9 +25,12 @@ export default function RootLayout({ children }) {
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>
         <TimelineEditsProvider>
-          <StoreProvider>
-            <OnboardingProvider>{children}</OnboardingProvider>
-          </StoreProvider>
+          {/* The planner sits outside the store so Up Next can be derived from it. */}
+          <Staffing2Provider>
+            <StoreProvider>
+              <OnboardingProvider>{children}</OnboardingProvider>
+            </StoreProvider>
+          </Staffing2Provider>
         </TimelineEditsProvider>
       </body>
     </html>

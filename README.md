@@ -122,27 +122,29 @@ This prototype is deliberately **not** visually polished. It uses a greyscale ne
 single accent colour, system sans-serif type, 1px borders, minimal corner radius, no gradients, no
 shadows, no photography and almost no animation.
 
-Users are told this in two places:
+Users are told this in three places:
 
-- A modal on first entry (`components/IntroModal.jsx`).
-- A persistent **"Low-fidelity prototype"** badge in the top bar, plus a note in the sidebar
-  reading *"Simulated data. Nothing here is saved to a real system."*
+- A blocking modal on first load of any screen (`components/onboarding/IntroModal.jsx`) that says, in plain
+  English, that this is an early prototype with made-up data, and gives the tester their goal.
+- A persistent **"Early prototype"** badge and a **"Your goal"** button in the top bar (the button reopens the modal).
+- A note in the sidebar: *"Simulated data. Nothing here is saved to a real system."*
 
----
+There are no tours or coach popovers. The modal can be closed with either button, the close button or Esc, and the
+app is then fully free-form.
 
 ## Prototype Goal
 
 Testers are given this goal in the opening modal:
 
-> **The Johnson Wedding is this Saturday. Start with what is up next and make sure the event is
-> fully staffed.**
+> **The Johnson Wedding is this Saturday and it is short on staff. Find out what needs attention and make sure
+> the wedding is fully staffed.**
 
 The modal does **not** say which buttons to press. The seeded scenario supporting it:
 
 - **Johnson Wedding** — Saturday 19 September 2026, 150 guests, 4:00 PM ceremony
 - Timeline blocks: Setup 9:00–3:00 (2 grounds) · Ceremony 3:00–5:00 (1 venue manager + 2 event staff) ·
-  Reception 5:00–9:00 (1 venue manager + 2 event staff + 1 bartender + 1 server) · Cleanup 9:00–11:00
-- **Jake Pearson has declined the ceremony assignment** — leaving the event short 1 Event Staff
+  Reception 5:00–9:00 (1 venue manager + 2 event staff + 1 bartender + 1 server) · Teardown 9:00–11:00
+- **The Johnson Wedding is short 5 positions** across setup, ceremony, reception and teardown
 - An unanswered couple request to move decorating to 9:00 AM
 - A catering guest-count deadline due today
 - A final balance of $4,250 due tomorrow
@@ -317,7 +319,7 @@ button.
 `AvailabilityGrid` · `TaskRow` · `Modal` · `ToastHost` · `useConfirm`
 
 **Shell:** `components/AppShell.jsx` (sidebar + top bar + mobile nav) ·
-`components/EventHeader.jsx` (event identity + tab bar) · `components/IntroModal.jsx`
+`components/EventHeader.jsx` (event identity + tab bar) · `components/onboarding/IntroModal.jsx`
 
 **Design tokens:** `app/globals.css` defines spacing, type, radius, neutrals, the single accent and
 the five status ramps as CSS custom properties consumed through Tailwind v4's `@theme`.

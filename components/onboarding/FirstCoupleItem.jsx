@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // The first Up Next item for a new venue: "Add your couple's names".
 //
-// Where the 3-step guide lands. One field, one button. Submitting records a
+// One field, one button, shown on Up Next until a couple is added. Submitting records a
 // minimal couple (names, initials, id), shows a small celebration (the quick
 // win), and the item leaves Up Next. The couple then appears in Couples with
 // its own page.
@@ -16,21 +16,13 @@ import { Button, Icon, StatusBadge, TextInput } from '@/components/ui/primitives
 import { useOnboarding } from './OnboardingProvider'
 
 export function FirstCoupleItem() {
-  const { hydrated, couple, addCouple, arrivedFromGuide, consumeArrival } = useOnboarding()
+  const { hydrated, couple, addCouple } = useOnboarding()
   const { toast } = useStore()
   const [names, setNames] = useState('')
   const [error, setError] = useState('')
   const [added, setAdded] = useState(null)
   const inputRef = useRef(null)
   const winRef = useRef(null)
-
-  // Arriving from the guide: put the cursor straight in the field.
-  useEffect(() => {
-    if (hydrated && arrivedFromGuide && !couple && inputRef.current) {
-      inputRef.current.focus()
-      consumeArrival()
-    }
-  }, [hydrated, arrivedFromGuide, couple, consumeArrival])
 
   useEffect(() => {
     if (added) winRef.current?.focus()

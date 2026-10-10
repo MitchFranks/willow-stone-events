@@ -21,40 +21,35 @@ import { Button, Count, Icon } from './ui/primitives'
 import { ToastHost } from './ui/domain'
 import { useOnboarding } from './onboarding/OnboardingProvider'
 import { AccountMenu } from './AccountMenu'
-import { PlannerGuide, clearPlannerGuide } from './onboarding/PlannerGuide'
-import { EventsGuide, clearEventsGuide } from './onboarding/EventsGuide'
 
+// The two things the product is for come first and are the only items with
+// full weight: the attention queue and the staffing planner. Everything else
+// is supporting context and sits under "More", visually quieter.
 const NAV = [
+  {
+    heading: 'Do first',
+    items: [
+      { href: '/up-next', label: 'Up Next', icon: 'check', badge: 'attention' },
+      // One workflow, one menu item. The tab bar inside it links its screens.
+      { href: '/staffing', match: '/staffing', label: 'Staffing Planner', icon: 'users', badge: 'openPositions' }
+    ]
+  },
   {
     heading: 'Overview',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: 'home', exact: true },
-      { href: '/up-next', label: 'Up Next', icon: 'check', badge: 'attention', onboarding: 'up-next' },
-      { href: '/calendar', label: 'Calendar', icon: 'calendar', onboarding: 'calendar' },
-      { href: '/events', label: 'Events', icon: 'list' }
+      { href: '/events', label: 'Events', icon: 'list' },
+      { href: '/staff', label: 'Staff Directory', icon: 'user' }
     ]
   },
   {
-    heading: 'Staffing',
+    heading: 'More',
+    quiet: true,
     items: [
-      // One workflow, one menu item. The tab bar inside it links its screens.
-      {
-        href: '/staffing',
-        match: '/staffing',
-        label: 'Staffing Planner',
-        icon: 'users',
-        badge: 'openPositions',
-        onboarding: 'staffing'
-      }
-    ]
-  },
-  {
-    heading: 'People & Comms',
-    items: [
-      { href: '/staff', label: 'Staff Directory', icon: 'user', onboarding: 'staff' },
-      { href: '/messages', label: 'Messages', icon: 'mail', badge: 'messages', onboarding: 'messages' },
+      { href: '/calendar', label: 'Calendar', icon: 'calendar' },
+      { href: '/messages', label: 'Messages', icon: 'mail', badge: 'messages' },
       { href: '/couples', label: 'Couples', icon: 'users' },
-      { href: '/vendors', label: 'Vendors', icon: 'truck', onboarding: 'vendors' }
+      { href: '/vendors', label: 'Vendors', icon: 'truck' }
     ]
   }
 ]
@@ -62,8 +57,8 @@ const NAV = [
 export function AppShell({ children }) {
   const pathname = usePathname()
   const [navOpen, setNavOpen] = useState(false)
-  const { attention, openPositions, messageList, toasts, dismissToast, reset } = useStore()
-  const { reset: resetGuide, guideTarget } = useOnboarding()
+  const { attention, openPositions, messageList, toasts, dismissToast } = useStore()
+  const { showIntro } = useOnboarding()
 
   const unreplied = messageList.filter((m) => m.needsReply && !m.replied).length
   const counts = { attention: attention.filter((a) => a.tone === 'urgent').length, openPositions: openPositions.length, messages: unreplied }
@@ -107,8 +102,18 @@ export function AppShell({ children }) {
 
           {/* VISIBILITY OF SYSTEM STATUS: the prototype never pretends to be real. */}
           <span className="ml-2 hidden h-6 items-center rounded-full bg-surface-sunken px-2.5 text-label font-medium text-ink-muted sm:inline-flex">
-            Prototype
+            Early prototype
           </span>
+
+          {/* The tester's goal is always one click away. */}
+          <button
+            type="button"
+            onClick={showIntro}
+            className="inline-flex h-9 items-center gap-2 rounded-sm border border-line-strong px-3 text-small font-medium text-ink transition-colors hover:bg-surface-sunken"
+          >
+            <Icon name="check" size={14} className="text-accent" />
+            Your goal
+          </button>
 
           <div className="ml-auto flex items-center gap-2">
             <Link
@@ -143,29 +148,26 @@ export function AppShell({ children }) {
           <nav className="p-3" aria-label="Main">
             {NAV.map((group) => (
               <div key={group.heading} className="mb-6">
-                <div className="mb-1 px-3 text-label text-ink-muted">{group.heading}</div>
+                <div className={cx('mb-1 px-3 text-label', group.quiet ? 'text-ink-muted/70' : 'font-medium text-ink')}>{group.heading}</div>
                 <ul className="space-y-px">
                   {group.items.map((item) => {
                     const active = item.href === activeHref
-                    // While the first-run guide points at a sidebar item, that item is marked.
-                    const guided = guideTarget && item.onboarding === guideTarget && !active
                     const count = item.badge ? counts[item.badge] : 0
                     return (
                       <li key={item.href}>
                         <Link
                           href={item.href}
                           aria-current={active ? 'page' : undefined}
-                          data-onboarding={item.onboarding}
                           className={cx(
                             'flex h-9 items-center gap-3 rounded-sm px-3 text-small font-medium transition-colors duration-150',
                             active
                               ? 'bg-surface-sunken text-ink font-semibold shadow-[inset_2px_0_0_var(--accent)]'
-                              : guided
-                                ? 'bg-surface-sunken text-accent ring-1 ring-inset ring-accent'
-                                : 'text-ink-muted hover:bg-surface-sunken hover:text-ink'
+                              : group.quiet
+                                ? 'text-ink-muted hover:bg-surface-sunken hover:text-ink'
+                                : 'text-ink hover:bg-surface-sunken'
                           )}
                         >
-                          <Icon name={item.icon} size={16} className={active || guided ? 'text-accent' : 'text-ink-muted'} />
+                          <Icon name={item.icon} size={16} className={active ? 'text-accent' : 'text-ink-muted'} />
                           <span className="flex-1 truncate">{item.label}</span>
                           {count > 0 && <Count tone={item.badge === 'attention' || item.badge === 'messages' ? 'urgent' : undefined}>{count}</Count>}
                         </Link>
@@ -177,25 +179,10 @@ export function AppShell({ children }) {
             ))}
 
             <div className="mt-6 border-t border-line pt-4">
-              <Button href="/events/new" variant="primary" size="md" className="w-full" data-onboarding="new-event">
+              <Button href="/events/new" variant="primary" size="md" className="w-full">
                 <Icon name="plus" size={14} />
                 New event
               </Button>
-              <button
-                type="button"
-                onClick={() => {
-                  reset()
-                  resetGuide()
-                  clearPlannerGuide()
-                  clearEventsGuide()
-                }}
-                className="mt-2 h-9 w-full rounded-sm px-3 text-small font-medium text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink"
-              >
-                Reset prototype data
-              </button>
-              <Link href="/style-guide" className="mt-1 flex h-9 items-center justify-center rounded-sm px-3 text-small font-medium text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink">
-                Style guide
-              </Link>
               <p className="mt-3 px-3 text-label text-ink-muted">
                 Simulated data. Nothing here is saved to a real system.
               </p>
@@ -218,8 +205,6 @@ export function AppShell({ children }) {
       </div>
 
       <ToastHost toasts={toasts} onDismiss={dismissToast} />
-      <PlannerGuide />
-      <EventsGuide />
     </div>
   )
 }

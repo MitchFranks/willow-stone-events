@@ -1,74 +1,64 @@
 'use client'
 
 // Settings: only things that really work in the prototype.
-//   Welcome guide  replay the guide
-//   Staffing Planner guide  replay the planner guide
+//   Goal & notice          reopen the first-load modal
+//   Reset prototype data   put every screen back to its starting state
+//   Style guide            the design library the screens are built from
+// These live here, not in the main menu, so the menu stays about the work.
 
-import { useRouter } from 'next/navigation'
-import { clearPlannerGuide } from '@/components/onboarding/PlannerGuide'
-import { clearEventsGuide } from '@/components/onboarding/EventsGuide'
+import { useStore } from '@/lib/store'
+import { useStaffing2 } from '@/lib/staffing/store'
 import { useOnboarding } from '@/components/onboarding/OnboardingProvider'
 import { Breadcrumbs, Button, Card, Icon, PageHeader } from '@/components/ui/primitives'
 
 export default function SettingsPage() {
-  const { replay } = useOnboarding()
-  const router = useRouter()
+  const { showIntro, reset: resetIntro } = useOnboarding()
+  const { reset: resetStore } = useStore()
+
+  const planner = useStaffing2()
+
+  const resetAll = () => {
+    resetStore()
+    planner.reset()
+    resetIntro()
+  }
 
   return (
     <div>
       <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Settings' }]} />
-      <PageHeader title="Settings" lead="Replay any of the guides. Changes apply straight away and are kept on this device." />
+      <PageHeader title="Settings" lead="Prototype controls. Changes apply straight away and are kept on this device." />
 
       <div className="max-w-2xl space-y-4">
-        <Card title="Welcome guide" subtitle="The two quick steps shown on first visit." icon="list">
+        <Card title="Your goal and the prototype notice" subtitle="The message shown when you first opened the prototype." icon="list">
           <p className="text-body leading-relaxed text-ink">
-            Want the tour again? It takes you back to the dashboard and starts from the welcome step. Your couples stay as they are.
+            Forgot what you are trying to do, or want to read the early-stage notice again? Your progress stays as it is.
           </p>
           <div className="mt-4">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={replay}
-            >
-              Replay the welcome guide
+            <Button variant="secondary" size="sm" onClick={showIntro}>
+              Show my goal
               <Icon name="arrowRight" size={13} />
             </Button>
           </div>
         </Card>
 
-        <Card title="Staffing Planner guide" subtitle="The two quick steps shown the first time you open the planner." icon="users">
+        <Card title="Reset prototype data" subtitle="Start over with the original sample weddings and staff." icon="clock">
           <p className="text-body leading-relaxed text-ink">
-            Want the planner tour again? It opens the Staffing Planner and points at the first button to click.
+            Undoes everything you have done (assignments, replies, new couples) and shows the first message again.
           </p>
           <div className="mt-4">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                clearPlannerGuide()
-                router.push('/staffing')
-              }}
-            >
-              Replay the planner guide
-              <Icon name="arrowRight" size={13} />
+            <Button variant="secondary" size="sm" onClick={resetAll}>
+              Reset everything
             </Button>
           </div>
         </Card>
 
-        <Card title="Events guide" subtitle="The three quick steps shown the first time you open Events." icon="calendar">
+        <Card title="Style guide" subtitle="The shared components every screen is built from." icon="users">
           <p className="text-body leading-relaxed text-ink">
-            Want the events tour again? It opens Events and points at the first thing to click.
+            Buttons, status badges, cards and attention items are defined once and reused on every screen.
           </p>
           <div className="mt-4">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                clearEventsGuide()
-                router.push('/events')
-              }}
-            >
-              Replay the events guide
+            <Button href="/style-guide" variant="secondary" size="sm">
+              Open the style guide
               <Icon name="arrowRight" size={13} />
             </Button>
           </div>

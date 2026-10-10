@@ -12,7 +12,7 @@
 import Link from 'next/link'
 import { useStore } from '@/lib/store'
 import { events, venue } from '@/lib/mock/events'
-import { Button, Card, Icon, MetricTile, PageHeader, StatusBadge } from '@/components/ui/primitives'
+import { Card, Icon, MetricTile, PageHeader, StatusBadge } from '@/components/ui/primitives'
 import { UpNextItem, EventCard } from '@/components/ui/domain'
 
 export default function DashboardPage() {
@@ -29,12 +29,6 @@ export default function DashboardPage() {
       <PageHeader
         title="Here's what to tackle next across your weddings."
         lead={`${venue.name} · ${venue.today}. Everything below is ordered so the most useful thing to do comes first.`}
-        actions={
-          <Button href="/up-next" variant="primary" size="md">
-            See what's up next
-            <Icon name="arrowRight" size={14} />
-          </Button>
-        }
       />
 
       {/* Counters that describe WORK, not vanity metrics. Each is a route in. */}

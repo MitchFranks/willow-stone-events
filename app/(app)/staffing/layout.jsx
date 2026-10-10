@@ -1,15 +1,15 @@
-import { Staffing2Provider } from '@/lib/staffing/store'
 import { UndoToast } from '@/components/staffing/UndoToast'
 import { PhoneDrawer } from '@/components/staffing/StaffPhone'
 
-// Staffing Planner has its own state (key vue-lowfi-staffing2-v1), its own
-// toast with Undo, and the phone drawer that any screen can open.
+// The planner's state lives in the root layout (app/layout.jsx) so Up Next and
+// the dashboard can read it. Its own toast with Undo and the phone drawer that
+// any planner screen can open are mounted here.
 export default function Staffing2Layout({ children }) {
   return (
-    <Staffing2Provider>
+    <>
       {children}
       <PhoneDrawer />
       <UndoToast />
-    </Staffing2Provider>
+    </>
   )
 }

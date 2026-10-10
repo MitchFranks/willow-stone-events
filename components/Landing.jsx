@@ -19,13 +19,6 @@ import { events, venue } from '@/lib/mock/events'
 import { staff } from '@/lib/mock/staff'
 import { Button, Icon } from './ui/primitives'
 
-const NAV = [
-  { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Weddings', href: '/events' },
-  { label: 'Staffing', href: '/staffing' },
-  { label: 'Messages', href: '/messages' }
-]
-
 export function Landing() {
   const { attention, openPositions } = useStore()
   const urgent = attention.filter((a) => a.tone === 'urgent').length
@@ -46,19 +39,7 @@ export function Landing() {
             <span className="hidden text-small text-ink-muted sm:inline">Wedding venue operations</span>
           </span>
 
-          <nav className="hidden flex-1 items-center gap-1 lg:flex" aria-label="Welcome">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="inline-flex h-8 items-center rounded-sm px-3 text-small font-medium text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <Button href="/dashboard" variant="secondary" className="ml-auto lg:ml-0">
+          <Button href="/dashboard" variant="ghost" className="ml-auto">
             Open dashboard
           </Button>
         </div>
@@ -69,21 +50,21 @@ export function Landing() {
         <p className="text-small text-ink-muted">Wedding operations for {venue.name}</p>
 
         <h1 className="mt-4 max-w-[18ch] text-title font-light text-balance sm:text-display">
-          Every wedding, every loose end, in one quiet place.
+          See what needs you today, and fix it before the wedding.
         </h1>
 
         <p className="mt-6 max-w-prose text-heading text-ink-muted">
-          Timeline, vendors, staff, payments, contracts and couple email for every wedding you host, together on one
-          screen instead of scattered across five systems.
+          Vue finds the open staff positions, unanswered messages, unpaid balances and unsigned documents across your
+          weddings, and shows what to do about each one.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Button href="/dashboard" variant="primary" size="lg">
+          <Button href="/up-next" variant="primary" size="lg">
             See what&apos;s up next
             <Icon name="arrowRight" size={16} />
           </Button>
-          <Button href="/staffing" variant="ghost" size="lg">
-            Review staffing
+          <Button href="/staffing" variant="secondary" size="lg">
+            Fill open positions
           </Button>
         </div>
 

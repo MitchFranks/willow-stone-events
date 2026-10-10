@@ -3,6 +3,11 @@
 // ---------------------------------------------------------------------------
 // Prototype state engine.
 //
+// STAFFING comes from the Staffing Planner's state (lib/staffing/store.jsx):
+// open positions, event coverage and unsent texts are derived from its
+// requests, so asking, sending and a reply in the planner clear the matching
+// Up Next item. Tasks, messages and documents live here.
+//
 // The whole point of this file: nothing in the Up Next list is
 // hard-coded. Attention items are DERIVED from the current state of assignments,
 // tasks, messages and documents. So when Jake declines an assignment, an open position
@@ -23,6 +28,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { events, eventById, seedAssignments, blockById, daysOutLabel } from './mock/events.js'
 import { documents, messages, tasks } from './mock/records.js'
 import { isAvailable, pluralRole, staff, staffById } from './mock/staff.js'
+import { useStaffing2 } from './staffing/store'
+import { changed, coverage, requestList, rolesOf, staffById as plannerStaffById } from './staffing/derive'
 
 const StoreContext = createContext(null)
 
@@ -64,6 +71,7 @@ export function StoreProvider({ children }) {
   const [state, setState] = useState(initialState)
   const [toasts, setToasts] = useState([])
   const [hydrated, setHydrated] = useState(false)
+  const { state: planner } = useStaffing2()
 
   // Rehydrate after mount so the server-rendered HTML and the first couple
   // render match (static export would otherwise warn about a mismatch).
@@ -303,34 +311,31 @@ export function StoreProvider({ children }) {
     const out = []
     for (const event of events) {
       for (const block of event.blocks) {
-        const assigned = assignmentList.filter((a) => a.blockId === block.id)
-        for (const requirement of block.requirements) {
-          const accepted = assigned.filter((a) => a.role === requirement.role && a.status === 'accepted').length
-          const pending = assigned.filter((a) => a.role === requirement.role && a.status === 'pending').length
-          const draft = assigned.filter((a) => a.role === requirement.role && a.status === 'draft').length
-          const declined = assigned.filter((a) => a.role === requirement.role && a.status === 'declined')
-          const short = requirement.count - accepted
-          if (short > 0) {
-            out.push({
-              id: `${block.id}--${requirement.role.replace(/\s+/g, '-').toLowerCase()}`,
-              eventId: event.id,
-              event,
-              block,
-              role: requirement.role,
-              required: requirement.count,
-              accepted,
-              pending,
-              draft,
-              short,
-              declinedBy: declined.map((d) => staffById(d.staffId)).filter(Boolean),
-              urgency: event.primary ? 'urgent' : 'warn'
-            })
-          }
+        for (const role of rolesOf(block, planner)) {
+          const c = coverage(event.id, block, role, planner)
+          if (c.gap <= 0) continue
+          const declined = requestList(planner).filter(
+            (r) => r.eventId === event.id && r.role === role && r.status === 'declined' && r.blockIds.includes(block.id)
+          )
+          out.push({
+            id: `${block.id}--${role.replace(/\s+/g, '-').toLowerCase()}`,
+            eventId: event.id,
+            event,
+            block,
+            role,
+            required: c.need,
+            accepted: c.confirmed,
+            pending: c.waiting,
+            draft: c.notSent,
+            short: c.gap,
+            declinedBy: declined.map((r) => plannerStaffById(r.staffId)).filter(Boolean),
+            urgency: event.primary ? 'urgent' : 'warn'
+          })
         }
       }
     }
     return out
-  }, [assignmentList])
+  }, [planner])
 
   const openPositionById = useCallback((id) => openPositions.find((g) => g.id === id) || null, [openPositions])
 
@@ -400,20 +405,17 @@ export function StoreProvider({ children }) {
       let pending = 0
       let draft = 0
       for (const block of event.blocks) {
-        const assigned = assignmentList.filter((a) => a.blockId === block.id)
-        for (const requirement of block.requirements) {
-          required += requirement.count
-          filled += Math.min(
-            requirement.count,
-            assigned.filter((a) => a.role === requirement.role && a.status === 'accepted').length
-          )
-          pending += assigned.filter((a) => a.role === requirement.role && a.status === 'pending').length
-          draft += assigned.filter((a) => a.role === requirement.role && a.status === 'draft').length
+        for (const role of rolesOf(block, planner)) {
+          const c = coverage(event.id, block, role, planner)
+          required += c.need
+          filled += c.filled
+          pending += c.waiting
+          draft += c.notSent
         }
       }
       return { required, filled, pending, draft, short: required - filled, complete: filled >= required }
     },
-    [assignmentList]
+    [planner]
   )
 
   // ---- derived: tasks / messages / documents ------------------------------
@@ -472,24 +474,24 @@ export function StoreProvider({ children }) {
       })
     }
 
-    // 1b. Assignments saved but never sent to staff
+    // 1b. Asks saved in the planner but never sent as texts
     for (const event of events) {
-      const drafts = assignmentList.filter(
-        (a) => a.status === 'draft' && event.blocks.some((b) => b.id === a.blockId)
+      const drafts = requestList(planner).filter(
+        (r) => r.eventId === event.id && (r.status === 'draft' || changed(r))
       ).length
       if (!drafts) continue
       items.push({
         id: `publish:${event.id}`,
         kind: 'staffing',
         tone: 'warn',
-        title: `Send ${drafts} staffing ${drafts === 1 ? 'change' : 'changes'} for ${event.name}`,
-        what: 'Assignments are saved, but the team has not been asked to accept them yet.',
-        why: 'Publishing notifies each person so they can accept or decline.',
+        title: `Send ${drafts} ${drafts === 1 ? 'text' : 'texts'} for ${event.name}`,
+        what: 'People are chosen, but they have not been asked yet.',
+        why: 'Sending the text lets each person say yes or no.',
         eventId: event.id,
         eventName: event.name,
         meta: `${drafts} not sent`,
-        actionLabel: 'Review and publish',
-        href: `/staffing/${event.id}`
+        actionLabel: 'Review and send',
+        href: `/staffing/${event.id}?send=1`
       })
     }
 
@@ -556,7 +558,7 @@ export function StoreProvider({ children }) {
     return items
       .filter((i) => !state.dismissedAttentionIds.includes(i.id))
       .sort((a, b) => (order[a.tone] ?? 9) - (order[b.tone] ?? 9))
-  }, [openPositions, assignmentList, messageList, taskList, documentList, state.dismissedAttentionIds])
+  }, [openPositions, planner, messageList, taskList, documentList, state.dismissedAttentionIds])
 
   const attentionForEvent = useCallback((eventId) => attention.filter((a) => a.eventId === eventId), [attention])
 
