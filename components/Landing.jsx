@@ -17,10 +17,12 @@ import Link from 'next/link'
 import { useStore } from '@/lib/store'
 import { events, venue } from '@/lib/mock/events'
 import { Button, Icon } from './ui/primitives'
+import { UpNextItem } from './ui/domain'
 
 export function Landing() {
   const { attention, openPositions } = useStore()
   const urgent = attention.filter((a) => a.tone === 'urgent').length
+  const preview = attention.slice(0, 3)
 
   const figures = [
     { value: events.length, label: 'Weddings & events' },
@@ -45,7 +47,8 @@ export function Landing() {
       </header>
 
       {/* ------------------------------- hero -------------------------------- */}
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-4 py-16 md:px-8">
+      <main className="mx-auto grid w-full max-w-6xl flex-1 content-center gap-12 px-4 py-16 md:px-8 lg:grid-cols-2 lg:items-center">
+        <div>
         <p className="text-small text-ink-muted">Wedding operations for {venue.name}</p>
 
         <h1 className="mt-4 max-w-[18ch] text-title font-light text-balance sm:text-display">
@@ -68,14 +71,36 @@ export function Landing() {
         </div>
 
         {/* Live figures, set large and light. */}
-        <dl className="mt-16 grid max-w-3xl grid-cols-1 border-t border-line sm:grid-cols-3">
+        <dl className="mt-12 hidden grid-cols-3 border-t border-line lg:grid">
           {figures.map((f, i) => (
-            <div key={f.label} className={i > 0 ? 'border-t border-line pt-6 sm:border-t-0 sm:border-l sm:pl-6' : 'pt-6'}>
+            <div key={f.label} className={i > 0 ? 'border-l border-line pl-6 pt-6' : 'pt-6'}>
               <dt className="text-small text-ink-muted">{f.label}</dt>
               <dd className="mt-1 text-display font-light tabular-nums">{f.value}</dd>
             </div>
           ))}
         </dl>
+        </div>
+
+        {/* ---- Preview: the real Up Next component, read-only, from live data. ---- */}
+        {preview.length > 0 && (
+          <section aria-label="Preview of the Up Next list">
+            <p className="mb-2 text-small text-ink-muted">What you&apos;ll see: your Up Next list</p>
+            <div
+              inert
+              className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface shadow-raised"
+            >
+              {preview.map((item, i) => (
+                <UpNextItem key={item.id} item={item} badge compact={i > 0} first={i === 0} />
+              ))}
+            </div>
+            <p className="mt-3 text-small text-ink-muted">
+              Each item says what is wrong, which wedding it affects, and gives one button to fix it.{' '}
+              <Link href="/up-next" className="text-accent underline-offset-2 hover:underline">
+                Open the full list
+              </Link>
+            </p>
+          </section>
+        )}
       </main>
 
       {/* ------------------------------ footer ------------------------------- */}
